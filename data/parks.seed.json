@@ -1,0 +1,490 @@
+[
+  {
+    "name": "Mosvatnet Tuftepark",
+    "city": "Stavanger",
+    "area": "Mosvatnet",
+    "latitude": 58.9612,
+    "longitude": 5.7108,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Mosvatnet (Stavanger) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Madlamark Treningspark",
+    "city": "Stavanger",
+    "area": "Madla",
+    "latitude": 58.9525,
+    "longitude": 5.669,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Benk for sit-ups",
+      "Push-up-håndtak"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Madla (Stavanger) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Hundvåg Calisthenics",
+    "city": "Stavanger",
+    "area": "Hundvåg",
+    "latitude": 58.9868,
+    "longitude": 5.7375,
+    "parkType": "Calisthenicspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Monkey bars"
+    ],
+    "hasLighting": false,
+    "description": "Calisthenicspark i Hundvåg (Stavanger) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Lagård Tuftepark",
+    "city": "Stavanger",
+    "area": "Storhaug",
+    "latitude": 58.9645,
+    "longitude": 5.7455,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Storhaug (Stavanger) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Hillevåg Treningspark",
+    "city": "Stavanger",
+    "area": "Hillevåg",
+    "latitude": 58.9478,
+    "longitude": 5.7342,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Push-up-håndtak"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Hillevåg (Stavanger) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Tastaveden Tuftepark",
+    "city": "Stavanger",
+    "area": "Tasta",
+    "latitude": 58.9935,
+    "longitude": 5.6955,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Tasta (Stavanger) med 6 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Eiganes Utetrening",
+    "city": "Stavanger",
+    "area": "Eiganes",
+    "latitude": 58.9668,
+    "longitude": 5.7205,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Parallell-barrer",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": false,
+    "description": "Treningspark i Eiganes (Stavanger) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Våland Calisthenicspark",
+    "city": "Stavanger",
+    "area": "Våland",
+    "latitude": 58.959,
+    "longitude": 5.733,
+    "parkType": "Calisthenicspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Calisthenicspark i Våland (Stavanger) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Kvernevik Tuftepark",
+    "city": "Stavanger",
+    "area": "Kvernevik",
+    "latitude": 58.9795,
+    "longitude": 5.646,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Kvernevik (Stavanger) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Sunde Hinderløype",
+    "city": "Stavanger",
+    "area": "Sunde",
+    "latitude": 58.9445,
+    "longitude": 5.656,
+    "parkType": "Hinderløype",
+    "equipment": [
+      "Pull-up-stang",
+      "Ribbevegg",
+      "Monkey bars",
+      "Strikkhopp-stativ"
+    ],
+    "hasLighting": false,
+    "description": "Hinderløype i Sunde (Stavanger) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Hinna Park Treningspark",
+    "city": "Stavanger",
+    "area": "Hinna",
+    "latitude": 58.9152,
+    "longitude": 5.7345,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Benk for sit-ups",
+      "Push-up-håndtak"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Hinna (Stavanger) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Jåttåvågen Tuftepark",
+    "city": "Stavanger",
+    "area": "Jåttå",
+    "latitude": 58.9215,
+    "longitude": 5.728,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Jåttå (Stavanger) med 6 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Gausel Calisthenics",
+    "city": "Stavanger",
+    "area": "Gausel",
+    "latitude": 58.9065,
+    "longitude": 5.7405,
+    "parkType": "Calisthenicspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer"
+    ],
+    "hasLighting": true,
+    "description": "Calisthenicspark i Gausel (Stavanger) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Stokkavannet Treningspark",
+    "city": "Stavanger",
+    "area": "Stokka",
+    "latitude": 58.9595,
+    "longitude": 5.686,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Benk for sit-ups",
+      "Push-up-håndtak",
+      "Strikkhopp-stativ"
+    ],
+    "hasLighting": false,
+    "description": "Treningspark i Stokka (Stavanger) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Ullandhaug Tuftepark",
+    "city": "Stavanger",
+    "area": "Ullandhaug",
+    "latitude": 58.9385,
+    "longitude": 5.6935,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Ullandhaug (Stavanger) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Bjergsted Utetrening",
+    "city": "Stavanger",
+    "area": "Bjergsted",
+    "latitude": 58.9748,
+    "longitude": 5.7235,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Push-up-håndtak"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Bjergsted (Stavanger) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Sandnes Stadion Tuftepark",
+    "city": "Sandnes",
+    "area": "Sentrum",
+    "latitude": 58.8528,
+    "longitude": 5.7398,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Sentrum (Sandnes) med 6 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Austrått Treningspark",
+    "city": "Sandnes",
+    "area": "Austrått",
+    "latitude": 58.8402,
+    "longitude": 5.7345,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Austrått (Sandnes) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Lura Calisthenicspark",
+    "city": "Sandnes",
+    "area": "Lura",
+    "latitude": 58.8655,
+    "longitude": 5.7405,
+    "parkType": "Calisthenicspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Calisthenicspark i Lura (Sandnes) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Figgjo Tuftepark",
+    "city": "Sandnes",
+    "area": "Figgjo",
+    "latitude": 58.7952,
+    "longitude": 5.7695,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg"
+    ],
+    "hasLighting": false,
+    "description": "Tuftepark i Figgjo (Sandnes) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Hana Treningspark",
+    "city": "Sandnes",
+    "area": "Hana",
+    "latitude": 58.8462,
+    "longitude": 5.7705,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Push-up-håndtak",
+      "Strikkhopp-stativ"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Hana (Sandnes) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Hommersåk Tuftepark",
+    "city": "Sandnes",
+    "area": "Riska",
+    "latitude": 58.9305,
+    "longitude": 5.8505,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Riska (Sandnes) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Bogafjell Hinderløype",
+    "city": "Sandnes",
+    "area": "Bogafjell",
+    "latitude": 58.833,
+    "longitude": 5.705,
+    "parkType": "Hinderløype",
+    "equipment": [
+      "Pull-up-stang",
+      "Ribbevegg",
+      "Monkey bars",
+      "Strikkhopp-stativ"
+    ],
+    "hasLighting": false,
+    "description": "Hinderløype i Bogafjell (Sandnes) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Sandved Calisthenics",
+    "city": "Sandnes",
+    "area": "Sandved",
+    "latitude": 58.8472,
+    "longitude": 5.753,
+    "parkType": "Calisthenicspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Calisthenicspark i Sandved (Sandnes) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Trones Treningspark",
+    "city": "Sandnes",
+    "area": "Trones",
+    "latitude": 58.8562,
+    "longitude": 5.7255,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Benk for sit-ups",
+      "Push-up-håndtak"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Trones (Sandnes) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Ganddal Tuftepark",
+    "city": "Sandnes",
+    "area": "Ganddal",
+    "latitude": 58.8182,
+    "longitude": 5.7205,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups",
+      "Monkey bars"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Ganddal (Sandnes) med 6 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Stangeland Utetrening",
+    "city": "Sandnes",
+    "area": "Stangeland",
+    "latitude": 58.8362,
+    "longitude": 5.7155,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": false,
+    "description": "Treningspark i Stangeland (Sandnes) med 3 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Vatne Calisthenicspark",
+    "city": "Sandnes",
+    "area": "Vatne",
+    "latitude": 58.8598,
+    "longitude": 5.7615,
+    "parkType": "Calisthenicspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg"
+    ],
+    "hasLighting": true,
+    "description": "Calisthenicspark i Vatne (Sandnes) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Skeiene Tuftepark",
+    "city": "Sandnes",
+    "area": "Skeiene",
+    "latitude": 58.8418,
+    "longitude": 5.7425,
+    "parkType": "Tuftepark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Parallell-barrer",
+      "Ribbevegg",
+      "Benk for sit-ups"
+    ],
+    "hasLighting": true,
+    "description": "Tuftepark i Skeiene (Sandnes) med 5 typer apparater. Gratis og åpen for alle hele døgnet."
+  },
+  {
+    "name": "Melshei Treningspark",
+    "city": "Sandnes",
+    "area": "Melshei",
+    "latitude": 58.856,
+    "longitude": 5.782,
+    "parkType": "Treningspark",
+    "equipment": [
+      "Pull-up-stang",
+      "Dips-stativ",
+      "Push-up-håndtak",
+      "Strikkhopp-stativ"
+    ],
+    "hasLighting": true,
+    "description": "Treningspark i Melshei (Sandnes) med 4 typer apparater. Gratis og åpen for alle hele døgnet."
+  }
+]

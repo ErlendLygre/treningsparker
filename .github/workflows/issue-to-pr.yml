@@ -1,0 +1,115 @@
+name: Issue to PR
+
+# When an issue is opened (or reopened) and it belongs to the "Treningsparker" project board,
+# Claude implements it on a new branch and opens a pull request that closes the issue.
+#
+# Required secret:  ANTHROPIC_API_KEY (or CLAUDE_CODE_OAUTH_TOKEN)
+# Optional secret:  PROJECT_TOKEN - a PAT with `read:project` + `repo` scope. Needed to read
+#                   user/org-level project boards; GITHUB_TOKEN can't see Projects v2.
+#                   Without it, every new issue in this repository triggers a PR.
+# Manual retry:     Actions -> Issue to PR -> Run workflow (enter the issue number).
+
+on:
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to implement
+        required: true
+
+env:
+  PROJECT_NAME: Treningsparker
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: issue-to-pr-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  check-project:
+    runs-on: ubuntu-latest
+    outputs:
+      in_project: ${{ steps.check.outputs.in_project }}
+      number: ${{ steps.check.outputs.number }}
+    steps:
+      - id: check
+        uses: actions/github-script@v7
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        with:
+          script: |
+            const number = context.payload.issue?.number ?? Number(context.payload.inputs.issue_number)
+            core.setOutput('number', number)
+
+            if (!process.env.PROJECT_TOKEN) {
+              core.warning('PROJECT_TOKEN not set: skipping project board check, treating every issue as in scope.')
+              core.setOutput('in_project', 'true')
+              return
+            }
+
+            const gh = github.getOctokit(process.env.PROJECT_TOKEN)
+            const query = `query($owner: String!, $repo: String!, $number: Int!) {
+              repository(owner: $owner, name: $repo) {
+                issue(number: $number) { projectItems(first: 20) { nodes { project { title } } } }
+              }
+            }`
+            // Issues created from the board are attached to the project right after creation, so retry briefly.
+            for (let attempt = 1; attempt <= 6; attempt++) {
+              const res = await gh.graphql(query, { owner: context.repo.owner, repo: context.repo.repo, number })
+              const titles = res.repository.issue.projectItems.nodes.map(n => n.project.title)
+              core.info(`Attempt ${attempt}: projects = ${JSON.stringify(titles)}`)
+              if (titles.some(t => t.toLowerCase() === process.env.PROJECT_NAME.toLowerCase())) {
+                core.setOutput('in_project', 'true')
+                return
+              }
+              await new Promise(r => setTimeout(r, 10000))
+            }
+            core.info(`Issue #${number} is not on the "${process.env.PROJECT_NAME}" board, skipping.`)
+            core.setOutput('in_project', 'false')
+
+  implement:
+    needs: check-project
+    if: needs.check-project.outputs.in_project == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Implement GitHub issue #${{ needs.check-project.outputs.number }} in ${{ github.repository }}.
+            Read it first with `gh issue view ${{ needs.check-project.outputs.number }} --comments`.
+
+            This repo is a React (frontend/) + .NET 8 (backend/) + SQL Server app; see README.md.
+            1. Create a branch named `issue-${{ needs.check-project.outputs.number }}-<short-slug>` from the default branch.
+            2. Make the change, matching the existing code style. Add or update tests where it makes sense.
+            3. Verify: `dotnet test backend/Treningsparker.sln`, and in frontend/: `npm ci && npm run lint && npm run build`.
+            4. Commit, push the branch, and open a pull request with `gh pr create` whose body
+               summarises the change and contains `Closes #${{ needs.check-project.outputs.number }}`.
+            If the issue is too unclear to implement, do not open a PR; comment on the issue
+            with `gh issue comment` explaining what information is missing.
+          claude_args: >-
+            --max-turns 60
+            --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh pr create:*),Bash(dotnet:*),Bash(npm:*),Bash(npx:*)"
