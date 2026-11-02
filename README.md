@@ -15,7 +15,7 @@ A map of free outdoor exercise parks (Tufteparker, calisthenics parks, outdoor g
 | --- | --- |
 | Frontend | React 18, TypeScript, Vite, Leaflet/react-leaflet, OpenStreetMap tiles |
 | Backend | ASP.NET Core 8 minimal API, EF Core, JWT auth, ASP.NET Identity password hashing |
-| Database | PostgreSQL 16 (SQLite for local dev and tests; SQL Server also supported via `DatabaseProvider=SqlServer`) |
+| Database | PostgreSQL 16+ (SQLite for local dev and tests; SQL Server also supported via `DatabaseProvider=SqlServer`) |
 | Hosting | Docker / docker compose, Scaleway Serverless Containers + Managed PostgreSQL, GitHub Pages (demo) |
 
 ```
@@ -99,7 +99,7 @@ One-time setup, in this order:
    - Variable `SCW_REGISTRY_NAMESPACE` = `treningsparker`. (`SCW_REGION` only if not `fr-par`.)
 
    Run *Actions → Deploy → Run workflow*. The images are pushed; the deploy step is skipped until step 6.
-4. **Database.** *Managed Databases → PostgreSQL* → create an instance in the same region (PostgreSQL 16, the
+4. **Database.** *Managed Databases → PostgreSQL* → create an instance in the same region (PostgreSQL 16 or newer, the
    smallest node type is plenty). Create a user with a strong password and a database `treningsparker`.
    Serverless Containers have no fixed outgoing IP, so the instance's allowed IPs must include `0.0.0.0/0`
    (the connection is TLS + password protected) unless you connect the containers through a Private Network.
