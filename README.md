@@ -74,7 +74,9 @@ therefore builds the React app **inside Docker** (`frontend/Dockerfile`, `static
 - **`API_URL` repository variable set** (e.g. `https://treningsparker-api.example.com`) → the Pages site talks to your hosted API.
   Add the Pages origin (`https://<user>.github.io`) to the API's `Cors__Origins__0` setting.
 
-One-time setup: *Settings → Pages → Source: GitHub Actions*. The workflow runs on pushes to `main`, or manually.
+The site is pushed to the `gh-pages` branch, and GitHub normally enables Pages for it automatically. If it doesn't, open
+`https://github.com/<owner>/treningsparker/settings/pages` and choose *Deploy from a branch → `gh-pages` / `(root)`*.
+The workflow runs on pushes to `main`, or manually.
 
 ### Container images
 
