@@ -1,17 +1,24 @@
-# Rendered by the nginx image at startup: ${API_UPSTREAM} is replaced from the environment.
+# Rendered by the nginx image at startup: ${API_UPSTREAM} and ${NGINX_LOCAL_RESOLVERS} are replaced from the environment.
 # docker compose:      API_UPSTREAM=http://api:8080
-# Scaleway containers: API_UPSTREAM=https://<your-api-container>.functions.fnc.fr-par.scw.cloud
+# Scaleway containers: API_UPSTREAM=https://<your-api-container>.functions.fnc.nl-ams.scw.cloud
+
+# Resolve the API host at request time, IPv4 only: Scaleway's endpoints also publish IPv6 addresses
+# that aren't reachable from inside a container, which made requests hang and nginx return 502/504.
+resolver ${NGINX_LOCAL_RESOLVERS} ipv6=off valid=60s;
+
 server {
     listen 80;
     root /usr/share/nginx/html;
     index index.html;
 
     location /api/ {
-        proxy_pass ${API_UPSTREAM};
+        set $api_upstream ${API_UPSTREAM};
+        proxy_pass $api_upstream;
         # Scaleway's edge rejects HTTP/1.0 (nginx's default for upstreams) with 426.
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_ssl_server_name on;
+        proxy_connect_timeout 5s;
         proxy_read_timeout 90s;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
