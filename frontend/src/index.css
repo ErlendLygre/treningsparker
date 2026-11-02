@@ -103,12 +103,12 @@ legend { font-weight: 500; font-size: 0.92rem; padding: 0 4px; }
 .tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 /* Map page */
-.map-layout { flex: 1; display: grid; grid-template-columns: 340px 1fr; min-height: 0; height: calc(100vh - var(--header-h)); }
+.map-layout { display: grid; grid-template-columns: 340px 1fr; grid-template-rows: minmax(0, 1fr); min-height: 0; height: calc(100vh - var(--header-h)); }
 .sidebar { display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); min-height: 0; }
 .filters { padding: 16px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
 .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .count { padding: 8px 16px 0; margin: 0; }
-.park-list { list-style: none; margin: 0; padding: 6px 8px; overflow-y: auto; flex: 1; }
+.park-list { list-style: none; margin: 0; padding: 6px 8px; overflow-y: auto; flex: 1; min-height: 0; }
 .park-list button {
   width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left;
   background: none; border: 0; padding: 9px 10px; border-radius: 8px; font: inherit; cursor: pointer; color: inherit;
