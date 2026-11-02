@@ -57,6 +57,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+
+// Measures a database round trip, to tell slow database connections apart from a slow API.
+app.MapGet("/api/health/db", async (AppDbContext db) =>
+{
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        var parks = await db.Parks.CountAsync();
+        return Results.Ok(new { status = "ok", parks, elapsedMs = watch.ElapsedMilliseconds });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "error", error = ex.GetType().Name, elapsedMs = watch.ElapsedMilliseconds }, statusCode: 503);
+    }
+});
 app.MapAuthEndpoints();
 app.MapParkEndpoints();
 

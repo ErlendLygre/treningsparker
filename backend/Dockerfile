@@ -3,9 +3,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY data/ data/
 COPY backend/Treningsparker.Api/Treningsparker.Api.csproj backend/Treningsparker.Api/
-RUN dotnet restore backend/Treningsparker.Api/Treningsparker.Api.csproj
+RUN dotnet restore backend/Treningsparker.Api/Treningsparker.Api.csproj -r linux-x64
 COPY backend/Treningsparker.Api/ backend/Treningsparker.Api/
-RUN dotnet publish backend/Treningsparker.Api/Treningsparker.Api.csproj -c Release -o /app --no-restore
+# ReadyToRun precompiles the code, which roughly halves cold start time on low-CPU containers.
+RUN dotnet publish backend/Treningsparker.Api/Treningsparker.Api.csproj -c Release -o /app --no-restore \
+    -r linux-x64 --self-contained false -p:PublishReadyToRun=true
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
