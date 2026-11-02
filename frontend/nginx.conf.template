@@ -1,0 +1,19 @@
+# Rendered by the nginx image at startup: ${API_UPSTREAM} is replaced from the environment.
+# docker compose:      API_UPSTREAM=http://api:8080
+# Scaleway containers: API_UPSTREAM=https://<your-api-container>.functions.fnc.fr-par.scw.cloud
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_ssl_server_name on;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

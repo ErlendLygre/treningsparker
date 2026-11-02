@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 concurrency:
   group: deploy
@@ -52,35 +51,65 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
 
-  # Publishes the API and web images to GitHub Container Registry so they can run on any container host.
-  images:
+  # Pushes the API and web images to Scaleway Container Registry and, once the Serverless
+  # Containers exist, points them at the new images. Configure under Settings -> Secrets and variables -> Actions:
+  #   secret   SCW_SECRET_KEY            Scaleway API key (secret part)
+  #   variable SCW_REGISTRY_NAMESPACE    registry namespace name, e.g. treningsparker
+  #   variable SCW_REGION                optional, defaults to fr-par
+  #   variable SCW_API_CONTAINER_ID      optional until the containers are created
+  #   variable SCW_WEB_CONTAINER_ID      optional until the containers are created
+  scaleway:
     needs: test
+    if: vars.SCW_REGISTRY_NAMESPACE != ''
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: api
-            dockerfile: backend/Dockerfile
-            target: ""
-          - name: web
-            dockerfile: frontend/Dockerfile
-            target: web
+    env:
+      REGION: ${{ vars.SCW_REGION || 'fr-par' }}
+      SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.name }}" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
+      - name: Log in to Scaleway Container Registry
+        run: |
+          echo "REGISTRY=rg.$REGION.scw.cloud/${{ vars.SCW_REGISTRY_NAMESPACE }}" >> "$GITHUB_ENV"
+          echo "$SCW_SECRET_KEY" | docker login "rg.$REGION.scw.cloud/${{ vars.SCW_REGISTRY_NAMESPACE }}" -u nologin --password-stdin
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
+          file: backend/Dockerfile
           push: true
           tags: |
-            ${{ steps.meta.outputs.image }}:latest
-            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/treningsparker-api:latest
+            ${{ env.REGISTRY }}/treningsparker-api:${{ github.sha }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: web
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/treningsparker-web:latest
+            ${{ env.REGISTRY }}/treningsparker-web:${{ github.sha }}
+
+      - name: Deploy to Serverless Containers
+        env:
+          API_ID: ${{ vars.SCW_API_CONTAINER_ID }}
+          WEB_ID: ${{ vars.SCW_WEB_CONTAINER_ID }}
+        run: |
+          deploy() {
+            local id=$1 image=$2
+            if [ -z "$id" ]; then
+              echo "::notice::No container id set for $image yet, skipping deploy (image is pushed)."
+              return
+            fi
+            echo "Deploying $REGISTRY/$image:${GITHUB_SHA} to container $id"
+            curl --fail-with-body -sS -X PATCH \
+              "https://api.scaleway.com/containers/v1beta1/regions/$REGION/containers/$id" \
+              -H "X-Auth-Token: $SCW_SECRET_KEY" -H "Content-Type: application/json" \
+              -d "{\"registry_image\": \"$REGISTRY/$image:${GITHUB_SHA}\", \"redeploy\": true}" > /dev/null
+          }
+          deploy "$API_ID" treningsparker-api
+          deploy "$WEB_ID" treningsparker-web

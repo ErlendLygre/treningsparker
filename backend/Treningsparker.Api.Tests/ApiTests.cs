@@ -3,26 +3,44 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Treningsparker.Api.Data;
 using Treningsparker.Api.Endpoints;
 
 namespace Treningsparker.Api.Tests;
 
+/// <summary>
+/// Runs the API against a throwaway SQLite file, or against PostgreSQL when TEST_POSTGRES is set to a
+/// connection string (a fresh database is created and dropped per test class).
+/// </summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"treningsparker-test-{Guid.NewGuid()}.db");
+    private readonly string? _postgres = Environment.GetEnvironmentVariable("TEST_POSTGRES");
+    private readonly string _dbName = $"treningsparker_test_{Guid.NewGuid():N}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("DatabaseProvider", "Sqlite");
-        builder.UseSetting("ConnectionStrings:Default", $"Data Source={_dbPath}");
+        if (_postgres is not null)
+        {
+            builder.UseSetting("DatabaseProvider", "Postgres");
+            builder.UseSetting("ConnectionStrings:Default", $"{_postgres};Database={_dbName}");
+        }
+        else
+        {
+            builder.UseSetting("DatabaseProvider", "Sqlite");
+            builder.UseSetting("ConnectionStrings:Default", $"Data Source={SqlitePath}");
+        }
     }
 
-    protected override void Dispose(bool disposing)
+    private string SqlitePath => Path.Combine(Path.GetTempPath(), $"{_dbName}.db");
+
+    public override async ValueTask DisposeAsync()
     {
-        base.Dispose(disposing);
+        using (var scope = Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();
+        await base.DisposeAsync();
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-        if (File.Exists(_dbPath)) File.Delete(_dbPath);
     }
 }
 

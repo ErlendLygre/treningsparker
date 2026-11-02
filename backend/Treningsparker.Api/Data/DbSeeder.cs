@@ -15,7 +15,7 @@ public static class DbSeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // SQL Server in docker can take a while to accept connections, so retry.
+        // The database can take a while to accept connections after a cold start, so retry.
         for (var attempt = 1; ; attempt++)
         {
             try

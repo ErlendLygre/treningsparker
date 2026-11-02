@@ -11,10 +11,18 @@ var config = builder.Configuration;
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = config.GetConnectionString("Default");
-    if (string.Equals(config["DatabaseProvider"], "Sqlite", StringComparison.OrdinalIgnoreCase))
-        options.UseSqlite(connectionString);
-    else
-        options.UseSqlServer(connectionString);
+    switch (config["DatabaseProvider"]?.ToLowerInvariant())
+    {
+        case "sqlite":
+            options.UseSqlite(connectionString);
+            break;
+        case "sqlserver":
+            options.UseSqlServer(connectionString);
+            break;
+        default:
+            options.UseNpgsql(connectionString);
+            break;
+    }
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

@@ -17,6 +17,7 @@ FROM scratch AS static
 COPY --from=build /src/frontend/dist /
 
 FROM nginx:1.27-alpine AS web
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+ENV API_UPSTREAM=http://api:8080
+COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/frontend/dist /usr/share/nginx/html
 EXPOSE 80
