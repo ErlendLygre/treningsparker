@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -5,9 +6,11 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Treningsparker.Api.Data;
 using Treningsparker.Api.Endpoints;
+using Treningsparker.Api.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
+StartupChecks.EnsureSecretsConfigured(config, builder.Environment);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -39,6 +42,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!)),
         };
+        // Tokens live for hours, so check on each request that the user still exists and that admin
+        // rights haven't been revoked since the token was issued.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var user = int.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id)
+                    : null;
+                if (user is null || (context.Principal!.IsInRole("Admin") && !user.IsAdmin))
+                    context.Fail("User no longer exists or is no longer an admin.");
+            },
+        };
     });
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Admin", policy => policy.RequireRole("Admin"));
@@ -49,12 +66,14 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
         .AllowAnyMethod()));
 
 builder.Services.AddProblemDetails();
+builder.Services.AddAppRateLimiting(config);
 
 var app = builder.Build();
 
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 

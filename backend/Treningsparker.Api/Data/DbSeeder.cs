@@ -31,7 +31,8 @@ public static class DbSeeder
         }
 
         var adminEmail = config["Admin:Email"] ?? "admin@treningsparker.no";
-        var adminPassword = config["Admin:Password"] ?? "Admin123!";
+        var adminPassword = config["Admin:Password"]
+            ?? throw new InvalidOperationException("Admin:Password is not configured.");
         if (!await db.Users.AnyAsync(u => u.Email == adminEmail))
         {
             var admin = new User { Email = adminEmail, DisplayName = "Administrator", IsAdmin = true };

@@ -38,7 +38,7 @@ export default function AdminPage() {
   }
 
   const reject = (p: Park) => {
-    const reason = window.prompt(`Begrunnelse for å avvise «${p.name}» (valgfritt):`)
+    const reason = window.prompt(`Begrunnelse for å avvise «${p.name}» (valgfritt, maks 500 tegn):`)?.slice(0, 500) ?? null
     if (reason !== null) run(() => api.rejectPark(token!, p.id, reason))
   }
 

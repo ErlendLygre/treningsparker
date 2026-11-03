@@ -23,6 +23,9 @@ services:
       Jwt__Key: ${JWT_KEY:-CHANGE_ME_development_only_key_at_least_32_chars}
       Admin__Email: ${ADMIN_EMAIL:-admin@treningsparker.no}
       Admin__Password: ${ADMIN_PASSWORD:-Admin123!}
+      # Local use only: lets the API start with the public default key/password above.
+      # Remove this and set JWT_KEY and ADMIN_PASSWORD for anything reachable from the internet.
+      AllowInsecureDefaults: "true"
     depends_on:
       db:
         condition: service_healthy

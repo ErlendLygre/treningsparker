@@ -6,22 +6,50 @@
 # that aren't reachable from inside a container, which made requests hang and nginx return 502/504.
 resolver ${NGINX_LOCAL_RESOLVERS} ipv6=off valid=60s;
 
+# The visitor's IP is the rightmost X-Forwarded-For entry (added by the platform's edge proxy; entries
+# further left come from the client and can be spoofed). Without the header, use the connecting address.
+map $http_x_forwarded_for $client_ip {
+    "~(?<last_ip>[^,\s]+)\s*$" $last_ip;
+    default $remote_addr;
+}
+
+# Login and registration: 20 requests per minute per visitor, with a small burst.
+limit_req_zone $client_ip zone=auth:10m rate=20r/m;
+limit_req_status 429;
+
 server {
     listen 80;
     root /usr/share/nginx/html;
     index index.html;
 
+    # Security headers. Scripts only from this site; map tiles from OpenStreetMap; inline styles are
+    # needed by Leaflet and React style attributes.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # Shared settings for proxying to the API.
+    # Scaleway's edge rejects HTTP/1.0 (nginx's default for upstreams) with 426.
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_ssl_server_name on;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 90s;
+    proxy_set_header X-Forwarded-For $client_ip;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    location /api/auth/ {
+        limit_req zone=auth burst=10 nodelay;
+        set $api_upstream ${API_UPSTREAM};
+        proxy_pass $api_upstream;
+    }
+
     location /api/ {
         set $api_upstream ${API_UPSTREAM};
         proxy_pass $api_upstream;
-        # Scaleway's edge rejects HTTP/1.0 (nginx's default for upstreams) with 426.
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_ssl_server_name on;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 90s;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location / {

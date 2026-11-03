@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-import { api } from './api'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { api, setUnauthorizedHandler } from './api'
 import type { AuthResponse, User } from './types'
 
 interface AuthState {
@@ -13,10 +13,22 @@ interface AuthState {
 const STORAGE_KEY = 'treningsparker-auth'
 const AuthContext = createContext<AuthState | null>(null)
 
+/** Expiry time (ms) of a JWT, or null for tokens without one (the demo mode uses plain ids). */
+function tokenExpiry(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
 function readStored(): AuthResponse | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    const stored: AuthResponse | null = raw ? JSON.parse(raw) : null
+    const expiry = stored && tokenExpiry(stored.token)
+    return expiry && expiry <= Date.now() ? null : stored
   } catch {
     return null
   }
@@ -34,6 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* storage unavailable */
     }
   }, [])
+
+  // Log out when the API rejects the token, and when it expires while the page is open.
+  useEffect(() => {
+    setUnauthorizedHandler(() => store(null))
+    return () => setUnauthorizedHandler(null)
+  }, [store])
+
+  useEffect(() => {
+    const expiry = auth && tokenExpiry(auth.token)
+    if (!expiry) return
+    const timer = setTimeout(() => store(null), Math.max(0, expiry - Date.now()))
+    return () => clearTimeout(timer)
+  }, [auth, store])
 
   const value = useMemo<AuthState>(
     () => ({

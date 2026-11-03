@@ -31,15 +31,15 @@ export default function RegisterPage() {
         <h1>Opprett konto</h1>
         <label>
           Navn
-          <input required autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          <input required maxLength={100} autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
         </label>
         <label>
           E-post
-          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" required maxLength={256} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label>
           Passord <span className="muted small">(minst 8 tegn)</span>
-          <input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={busy}>{busy ? 'Oppretter…' : 'Opprett konto'}</button>

@@ -65,6 +65,21 @@ to run them against PostgreSQL instead; CI does both.
 | `POST` | `/api/admin/parks/{id}/approve`, `/api/admin/parks/{id}/reject` | admin |
 | `DELETE` | `/api/admin/parks/{id}` | admin |
 
+## Security
+
+- **Secrets are required in production.** Outside `Development`, the API refuses to start if `Jwt__Key` (32+ characters)
+  or `Admin__Password` is missing or still the public default from this repo. `docker-compose.yml` sets
+  `AllowInsecureDefaults=true` for local use only.
+- **Logins** last 12 hours (`Jwt__LifetimeHours`). Each request checks that the user still exists and is still an admin,
+  so revoking admin rights takes effect immediately. The frontend logs out when a token expires or is rejected.
+- **Rate limiting.** nginx allows 20 login/registration requests per minute per visitor. The API locks an account for
+  15 minutes after 10 wrong passwords, limits each user to 10 park suggestions per hour, and caps login/registration
+  calls made directly to the API. Tune under `RateLimiting__*`.
+- **Headers.** nginx sends a Content-Security-Policy, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+  `Permissions-Policy` and HSTS.
+- **Input** is length-checked on the server; all database access goes through EF Core (parameterised queries).
+- Passwords are hashed with ASP.NET Core Identity's `PasswordHasher` (PBKDF2).
+
 ## Deployment
 
 ### GitHub Pages (frontend)

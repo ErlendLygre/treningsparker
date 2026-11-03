@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Treningsparker.Api.Data;
+using Treningsparker.Api.Security;
 
 namespace Treningsparker.Api.Endpoints;
 
@@ -53,7 +54,7 @@ public static class ParkEndpoints
                 Latitude = req.Latitude,
                 Longitude = req.Longitude,
                 ParkType = string.IsNullOrWhiteSpace(req.ParkType) ? "Treningspark" : req.ParkType,
-                Equipment = string.Join(';', (req.Equipment ?? []).Select(e => e.Trim()).Where(e => e.Length > 0)),
+                Equipment = string.Join(';', CleanEquipment(req.Equipment)),
                 HasLighting = req.HasLighting,
                 Status = ParkStatus.Pending,
                 CreatedByUserId = user.GetUserId(),
@@ -62,7 +63,7 @@ public static class ParkEndpoints
             await db.SaveChangesAsync();
             await db.Entry(park).Reference(p => p.CreatedBy).LoadAsync();
             return Results.Created($"/api/parks/{park.Id}", ParkDto.From(park));
-        }).RequireAuthorization();
+        }).RequireAuthorization().RequireRateLimiting(RateLimiting.Submissions);
 
         var admin = app.MapGroup("/api/admin/parks").RequireAuthorization("Admin");
 
@@ -87,6 +88,8 @@ public static class ParkEndpoints
 
         admin.MapPost("/{id:int}/reject", async (int id, RejectRequest req, AppDbContext db) =>
         {
+            if (req.Reason?.Trim().Length > 500)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["reason"] = ["Begrunnelsen kan være maks 500 tegn."] });
             var park = await db.Parks.Include(p => p.CreatedBy).FirstOrDefaultAsync(p => p.Id == id);
             if (park is null) return Results.NotFound();
             park.Status = ParkStatus.Rejected;
@@ -109,13 +112,21 @@ public static class ParkEndpoints
     private static Dictionary<string, string[]> Validate(CreateParkRequest req)
     {
         var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(req.Name) || req.Name.Length > 150) errors["name"] = ["Navn er påkrevd (maks 150 tegn)."];
+        if (string.IsNullOrWhiteSpace(req.Name) || req.Name.Trim().Length > 150) errors["name"] = ["Navn er påkrevd (maks 150 tegn)."];
         if (!Cities.Contains(req.City)) errors["city"] = ["By må være Stavanger eller Sandnes."];
         if (req.ParkType is not null && !ParkTypes.Contains(req.ParkType)) errors["parkType"] = ["Ukjent parktype."];
         // Rough bounding box around Stavanger and Sandnes.
         if (req.Latitude is < 58.70 or > 59.10 || req.Longitude is < 5.45 or > 6.10)
             errors["location"] = ["Plasseringen må være i Stavanger/Sandnes-området."];
-        if (req.Description?.Length > 2000) errors["description"] = ["Beskrivelsen er for lang."];
+        if (req.Description?.Trim().Length > 2000) errors["description"] = ["Beskrivelsen kan være maks 2000 tegn."];
+        if (req.Area?.Trim().Length > 100) errors["area"] = ["Område kan være maks 100 tegn."];
+        var equipment = CleanEquipment(req.Equipment);
+        if (equipment.Count > 20 || equipment.Any(e => e.Length > 50) || string.Join(';', equipment).Length > 1000)
+            errors["equipment"] = ["Maks 20 apparater, hver på maks 50 tegn."];
         return errors;
     }
+
+    // Equipment is stored semicolon separated, so semicolons inside an item are dropped.
+    private static List<string> CleanEquipment(string[]? equipment) =>
+        (equipment ?? []).Select(e => e.Replace(";", "").Trim()).Where(e => e.Length > 0).Distinct().ToList();
 }

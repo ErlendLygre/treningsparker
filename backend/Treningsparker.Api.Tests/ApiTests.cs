@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Treningsparker.Api.Data;
 using Treningsparker.Api.Endpoints;
 
@@ -15,12 +16,25 @@ namespace Treningsparker.Api.Tests;
 /// </summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
+    public const string AdminEmail = "admin@treningsparker.no";
+    public const string AdminPassword = "Test-admin-password-1";
+
     private readonly string? _postgres = Environment.GetEnvironmentVariable("TEST_POSTGRES");
     private readonly string _dbName = $"treningsparker_test_{Guid.NewGuid():N}";
+
+    /// <summary>Settings applied on top of the test defaults; change before the first request.</summary>
+    public Dictionary<string, string?> Settings { get; } = new()
+    {
+        ["Jwt:Key"] = "test-signing-key-that-is-long-enough-1234567890",
+        ["Admin:Password"] = AdminPassword,
+        ["RateLimiting:AuthRequestsPerMinute"] = "10000",
+        ["RateLimiting:SubmissionsPerHour"] = "10000",
+    };
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        foreach (var (key, value) in Settings) builder.UseSetting(key, value);
         if (_postgres is not null)
         {
             builder.UseSetting("DatabaseProvider", "Postgres");
@@ -35,10 +49,22 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     private string SqlitePath => Path.Combine(Path.GetTempPath(), $"{_dbName}.db");
 
+    private bool _started;
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        _started = true;
+        return host;
+    }
+
     public override async ValueTask DisposeAsync()
     {
-        using (var scope = Services.CreateScope())
+        if (_started)
+        {
+            using var scope = Services.CreateScope();
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();
+        }
         await base.DisposeAsync();
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     }
@@ -100,7 +126,7 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // Regular users are not admins.
         Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsync($"/api/admin/parks/{created.Id}/approve", null)).StatusCode);
 
-        var admin = await LoginAsync("admin@treningsparker.no", "Admin123!");
+        var admin = await LoginAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
         var pending = await admin.GetFromJsonAsync<ParkDto[]>("/api/admin/parks?status=pending");
         Assert.Contains(pending!, p => p.Id == created.Id);
 
@@ -116,7 +142,7 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var user = await RegisterAsync();
         var created = await (await user.PostAsJsonAsync("/api/parks", NewPark("Avvist park"))).Content.ReadFromJsonAsync<ParkDto>();
 
-        var admin = await LoginAsync("admin@treningsparker.no", "Admin123!");
+        var admin = await LoginAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
         (await admin.PostAsJsonAsync($"/api/admin/parks/{created!.Id}/reject", new RejectRequest("Duplikat"))).EnsureSuccessStatusCode();
 
         var mine = await user.GetFromJsonAsync<ParkDto[]>("/api/parks/mine");
@@ -136,7 +162,7 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Wrong_password_returns_unauthorized()
     {
-        var res = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new LoginRequest("admin@treningsparker.no", "feil"));
+        var res = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new LoginRequest(ApiFactory.AdminEmail, "feil"));
         Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
     }
 }

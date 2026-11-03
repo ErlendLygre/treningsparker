@@ -1,6 +1,13 @@
 import type { AuthResponse, NewPark, Park, ParkStatus } from '../types'
 import { ApiError, type Api } from './types'
 
+let onUnauthorized: (() => void) | null = null
+
+/** Called when the API rejects a sent token (expired or revoked), so the app can log the user out. */
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler
+}
+
 async function request<T>(baseUrl: string, path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(init.headers)
   if (init.body) headers.set('Content-Type', 'application/json')
@@ -16,7 +23,11 @@ async function request<T>(baseUrl: string, path: string, init: RequestInit = {},
     } catch {
       /* no json body */
     }
-    if (res.status === 401 && path !== '/api/auth/login') message = 'Du må logge inn på nytt.'
+    if (res.status === 401 && token) {
+      message = 'Du må logge inn på nytt.'
+      onUnauthorized?.()
+    }
+    if (res.status === 429 && message.startsWith('Noe gikk galt')) message = 'For mange forsøk. Vent litt og prøv igjen.'
     if (res.status === 403) message = 'Du har ikke tilgang til dette.'
     throw new ApiError(message, res.status)
   }
