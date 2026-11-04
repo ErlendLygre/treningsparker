@@ -19,6 +19,13 @@ before they appear on the public map. See README.md for the full user-facing doc
 - Hosting: Scaleway Serverless Containers (`treningsparker-api`, `treningsparker-web`) in `nl-ams`, images in
   Scaleway Container Registry; API and DB share a Private Network. GitHub Pages hosts the demo build.
 
+## Live URLs
+
+- Website (production): https://erlendcorptreningspaf8b8c8ea-treningsparker-web.functions.fnc.nl-ams.scw.cloud
+- API (production): https://erlendcorptreningspaf8b8c8ea-treningsparker-api.functions.fnc.nl-ams.scw.cloud
+  – health checks: `/api/health` (API only) and `/api/health/db` (database round trip)
+- Demo (GitHub Pages, in-browser data): https://erlendlygre.github.io/treningsparker/
+
 ## Commands
 
 ```bash
