@@ -7,7 +7,8 @@ name: Infra
 #
 # Needs (Settings -> Secrets and variables -> Actions):
 #   secrets   SCW_TF_ACCESS_KEY, SCW_TF_SECRET_KEY   API key of an IAM application allowed to manage the project
-#   variables SCW_PROJECT_ID, TF_STATE_BUCKET, ADMIN_EMAIL
+#   secret    ADMIN_EMAIL (a secret so it is masked in the public logs)
+#   variables SCW_PROJECT_ID, TF_STATE_BUCKET
 #   variables for the one-time import: SCW_PRIVATE_NETWORK_ID, SCW_DB_INSTANCE_ID, SCW_REGISTRY_NAMESPACE_ID,
 #             SCW_CONTAINER_NAMESPACE_ID (+ the existing SCW_API_CONTAINER_ID, SCW_WEB_CONTAINER_ID)
 
@@ -55,7 +56,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.SCW_TF_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_TF_SECRET_KEY }}
       TF_VAR_project_id: ${{ vars.SCW_PROJECT_ID }}
-      TF_VAR_admin_email: ${{ vars.ADMIN_EMAIL }}
+      TF_VAR_admin_email: ${{ secrets.ADMIN_EMAIL }}
       TF_IN_AUTOMATION: "true"
     steps:
       - uses: actions/checkout@v4

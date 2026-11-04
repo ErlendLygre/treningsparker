@@ -101,8 +101,9 @@ One-time setup:
 2. **State bucket:** *Object Storage* → create a private bucket in `nl-ams`, e.g. `treningsparker-tfstate`
    (enable versioning). The state contains secrets; never make it public.
 3. **GitHub** (*Settings → Secrets and variables → Actions*):
-   - secrets `SCW_TF_ACCESS_KEY`, `SCW_TF_SECRET_KEY` (the key from step 1)
-   - variables `SCW_PROJECT_ID`, `TF_STATE_BUCKET`, `ADMIN_EMAIL`
+   - secrets `SCW_TF_ACCESS_KEY`, `SCW_TF_SECRET_KEY` (the key from step 1) and `ADMIN_EMAIL`
+     (a secret, not a variable: Actions logs are public in a public repository and only secrets are masked)
+   - variables `SCW_PROJECT_ID`, `TF_STATE_BUCKET`
    - for the import: `SCW_PRIVATE_NETWORK_ID`, `SCW_DB_INSTANCE_ID`, `SCW_REGISTRY_NAMESPACE_ID`,
      `SCW_CONTAINER_NAMESPACE_ID` (the container IDs already exist as variables)
 4. Fill in the resource names in `infra/terraform.tfvars`.

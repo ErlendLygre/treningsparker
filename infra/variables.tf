@@ -14,7 +14,7 @@ variable "zone" {
 }
 
 variable "admin_email" {
-  description = "Email of the app's admin user (GitHub variable ADMIN_EMAIL). Kept out of the public repo."
+  description = "Email of the app's admin user (GitHub secret ADMIN_EMAIL). Kept out of the public repo."
   type        = string
 }
 
