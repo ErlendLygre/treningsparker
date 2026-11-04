@@ -17,6 +17,8 @@ before they appear on the public map. See README.md for the full user-facing doc
   (`DatabaseProvider`). Schema is created with `EnsureCreated` (no migrations).
 - Hosting: Scaleway Serverless Containers (`treningsparker-api`, `treningsparker-web`) in `nl-ams`, images in
   Scaleway Container Registry; API and DB share a Private Network.
+- `infra/` – OpenTofu config for all Scaleway resources (state in a private Object Storage bucket).
+  `.github/workflows/infra.yml` validates on push; import/plan/apply only run when started manually.
 
 ## Live URLs
 
@@ -83,6 +85,10 @@ docker compose up --build
 - `main` deploys to production automatically (Deploy workflow → Scaleway).
   Push to a branch first and only update `main` once CI (`ci.yml`) is green.
 - Never commit secrets. Secrets live in Scaleway container secrets and GitHub Actions secrets/variables.
-- Don't change Scaleway resources, GitHub settings, secrets or variables – describe the steps for the owner instead.
+- Change Scaleway resources only through `infra/` on a branch; the owner runs plan/apply in the Infra workflow.
+  Never run `tofu apply` yourself or change resources in the console. GitHub settings, secrets and variables are
+  the owner's – describe the steps instead.
+- Never weaken `prevent_destroy` on the database, and treat any plan that replaces (`-/+`) the database,
+  Private Network or containers as a stop-and-ask.
 - Ask before changing the database schema: there are no migrations, so existing production tables are not
   altered by `EnsureCreated`.

@@ -1,0 +1,99 @@
+name: Infra
+
+# OpenTofu for the Scaleway infrastructure in infra/.
+# - Every push/PR touching infra/: format check + validate (no Scaleway access needed).
+# - Manual run (Actions -> Infra -> Run workflow): import, plan or apply. Apply only runs the plan
+#   produced in the same run, and the plan is shown in the run summary.
+#
+# Needs (Settings -> Secrets and variables -> Actions):
+#   secrets   SCW_TF_ACCESS_KEY, SCW_TF_SECRET_KEY   API key of an IAM application allowed to manage the project
+#   variables SCW_PROJECT_ID, TF_STATE_BUCKET, ADMIN_EMAIL
+#   variables for the one-time import: SCW_PRIVATE_NETWORK_ID, SCW_DB_INSTANCE_ID, SCW_REGISTRY_NAMESPACE_ID,
+#             SCW_CONTAINER_NAMESPACE_ID (+ the existing SCW_API_CONTAINER_ID, SCW_WEB_CONTAINER_ID)
+
+on:
+  push:
+    paths: ["infra/**", ".github/workflows/infra.yml"]
+  pull_request:
+    paths: ["infra/**", ".github/workflows/infra.yml"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do
+        type: choice
+        options: [plan, import, apply]
+        default: plan
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: infra
+
+jobs:
+  validate:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - run: tofu fmt -check -recursive -diff
+      - run: tofu init -backend=false -input=false
+      - run: tofu validate
+
+  run:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      SCW_ACCESS_KEY: ${{ secrets.SCW_TF_ACCESS_KEY }}
+      SCW_SECRET_KEY: ${{ secrets.SCW_TF_SECRET_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SCW_TF_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_TF_SECRET_KEY }}
+      TF_VAR_project_id: ${{ vars.SCW_PROJECT_ID }}
+      TF_VAR_admin_email: ${{ vars.ADMIN_EMAIL }}
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Init
+        run: tofu init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: Import existing resources
+        if: inputs.action == 'import'
+        env:
+          SCW_PRIVATE_NETWORK_ID: ${{ vars.SCW_PRIVATE_NETWORK_ID }}
+          SCW_DB_INSTANCE_ID: ${{ vars.SCW_DB_INSTANCE_ID }}
+          SCW_REGISTRY_NAMESPACE_ID: ${{ vars.SCW_REGISTRY_NAMESPACE_ID }}
+          SCW_CONTAINER_NAMESPACE_ID: ${{ vars.SCW_CONTAINER_NAMESPACE_ID }}
+          SCW_API_CONTAINER_ID: ${{ vars.SCW_API_CONTAINER_ID }}
+          SCW_WEB_CONTAINER_ID: ${{ vars.SCW_WEB_CONTAINER_ID }}
+        run: ./import.sh
+
+      - name: Plan
+        run: |
+          tofu plan -input=false -no-color -out=tfplan | tee plan.txt
+          {
+            echo "## OpenTofu plan (${{ inputs.action }})"
+            echo '```'
+            grep -E '^\s*[-+~]|# |Plan:|No changes' plan.txt | head -400
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply
+        if: inputs.action == 'apply'
+        run: |
+          tofu apply -input=false -no-color tfplan
+          {
+            echo "## Outputs"
+            echo '```'
+            tofu output -no-color | grep -v admin_password
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

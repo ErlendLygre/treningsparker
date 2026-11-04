@@ -1,0 +1,131 @@
+# Everything the app runs on in Scaleway. App images are deployed by .github/workflows/deploy.yml;
+# this config owns the infrastructure around them (network, database, registry, containers, secrets).
+
+resource "scaleway_vpc_private_network" "main" {
+  name = var.private_network_name
+}
+
+# --- Database ------------------------------------------------------------------------------------
+
+# Characters that are safe inside an Npgsql connection string.
+resource "random_password" "db" {
+  length           = 32
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
+  override_special = "!#%*-_+"
+}
+
+resource "scaleway_rdb_instance" "main" {
+  name          = var.db_instance_name
+  node_type     = var.db_node_type
+  engine        = var.db_engine
+  is_ha_cluster = false
+  user_name     = var.db_user_name
+  password      = random_password.db.result
+
+  # Only reachable from the Private Network: no public endpoint (no load_balancer block).
+  private_network {
+    pn_id       = scaleway_vpc_private_network.main.id
+    enable_ipam = true
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "scaleway_rdb_database" "app" {
+  instance_id = scaleway_rdb_instance.main.id
+  name        = "treningsparker"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# --- Registry and containers ---------------------------------------------------------------------
+
+resource "scaleway_registry_namespace" "main" {
+  name      = var.registry_namespace_name
+  is_public = false
+}
+
+resource "scaleway_container_namespace" "main" {
+  name = var.container_namespace_name
+}
+
+resource "random_password" "jwt" {
+  length  = 64
+  special = false
+}
+
+# Only used when the admin user doesn't exist yet (fresh database). An existing admin keeps their password.
+resource "random_password" "admin" {
+  length  = 24
+  special = false
+}
+
+locals {
+  db_endpoint       = scaleway_rdb_instance.main.private_network[0]
+  connection_string = join(";", [
+    "Host=${local.db_endpoint.ip}",
+    "Port=${local.db_endpoint.port}",
+    "Database=${scaleway_rdb_database.app.name}",
+    "Username=${var.db_user_name}",
+    "Password=${random_password.db.result}",
+    "SSL Mode=Require",
+  ])
+}
+
+resource "scaleway_container" "api" {
+  name               = "treningsparker-api"
+  namespace_id       = scaleway_container_namespace.main.id
+  registry_image     = "${scaleway_registry_namespace.main.endpoint}/treningsparker-api:latest"
+  port               = 8080
+  memory_limit       = var.api_memory_mb
+  min_scale          = var.api_min_scale
+  max_scale          = var.api_max_scale
+  privacy            = "public"
+  http_option        = "redirected"
+  private_network_id = scaleway_vpc_private_network.main.id
+  deploy             = true
+
+  environment_variables = {
+    DatabaseProvider = "Postgres"
+    Admin__Email     = var.admin_email
+  }
+
+  secret_environment_variables = {
+    ConnectionStrings__Default = local.connection_string
+    Jwt__Key                   = random_password.jwt.result
+    Admin__Password            = random_password.admin.result
+  }
+
+  lifecycle {
+    # The Deploy workflow points the container at each new image tag.
+    ignore_changes = [registry_image]
+  }
+}
+
+resource "scaleway_container" "web" {
+  name           = "treningsparker-web"
+  namespace_id   = scaleway_container_namespace.main.id
+  registry_image = "${scaleway_registry_namespace.main.endpoint}/treningsparker-web:latest"
+  port           = 80
+  memory_limit   = var.web_memory_mb
+  min_scale      = 0
+  max_scale      = var.web_max_scale
+  privacy        = "public"
+  http_option    = "redirected"
+  deploy         = true
+
+  environment_variables = {
+    API_UPSTREAM = "https://${scaleway_container.api.domain_name}"
+  }
+
+  lifecycle {
+    ignore_changes = [registry_image]
+  }
+}
