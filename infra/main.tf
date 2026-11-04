@@ -68,7 +68,7 @@ resource "random_password" "admin" {
 }
 
 locals {
-  db_endpoint       = scaleway_rdb_instance.main.private_network[0]
+  db_endpoint = scaleway_rdb_instance.main.private_network[0]
   connection_string = join(";", [
     "Host=${local.db_endpoint.ip}",
     "Port=${local.db_endpoint.port}",
