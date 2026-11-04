@@ -44,7 +44,7 @@ public static class DbSeeder
 
         if (!await db.Parks.AnyAsync())
         {
-            var path = config["SeedFile"] ?? Path.Combine(AppContext.BaseDirectory, "parks.seed.json");
+            var path = Path.Combine(AppContext.BaseDirectory, "parks.seed.json");
             if (!File.Exists(path))
             {
                 logger.LogWarning("Seed file {Path} not found, skipping park seed", path);

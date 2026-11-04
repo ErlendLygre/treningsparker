@@ -37,7 +37,6 @@ async function request<T>(baseUrl: string, path: string, init: RequestInit = {},
 export function createHttpApi(baseUrl: string): Api {
   const post = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) })
   return {
-    isDemo: false,
     login: (email, password) => request<AuthResponse>(baseUrl, '/api/auth/login', post({ email, password })),
     register: (email, password, displayName) =>
       request<AuthResponse>(baseUrl, '/api/auth/register', post({ email, password, displayName })),

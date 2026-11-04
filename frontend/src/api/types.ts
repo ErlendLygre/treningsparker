@@ -6,9 +6,8 @@ export class ApiError extends Error {
   }
 }
 
-/** Everything the UI needs from a backend. Implemented by the .NET API client and the in-browser demo. */
+/** Everything the UI needs from the .NET API. */
 export interface Api {
-  readonly isDemo: boolean
   login(email: string, password: string): Promise<AuthResponse>
   register(email: string, password: string, displayName: string): Promise<AuthResponse>
   getParks(): Promise<Park[]>

@@ -13,7 +13,7 @@ interface AuthState {
 const STORAGE_KEY = 'treningsparker-auth'
 const AuthContext = createContext<AuthState | null>(null)
 
-/** Expiry time (ms) of a JWT, or null for tokens without one (the demo mode uses plain ids). */
+/** Expiry time (ms) of a JWT, or null if it can't be read. */
 function tokenExpiry(token: string): number | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))

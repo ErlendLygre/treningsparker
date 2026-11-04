@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MapContainer, Marker, TileLayer } from 'react-leaflet'
 import { api } from '../api'
-import { resetDemoData } from '../api/demoApi'
 import { useAuth } from '../auth'
 import ParkDetails from '../components/ParkDetails'
 import StatusBadge from '../components/StatusBadge'
@@ -16,7 +15,7 @@ const TABS: { status: ParkStatus | undefined; label: string }[] = [
 ]
 
 export default function AdminPage() {
-  const { token, logout } = useAuth()
+  const { token } = useAuth()
   const [tab, setTab] = useState<ParkStatus | undefined>('Pending')
   const [parks, setParks] = useState<Park[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -50,20 +49,6 @@ export default function AdminPage() {
     <div className="page">
       <div className="page-head">
         <h1>Administrer parker</h1>
-        {api.isDemo && (
-          <button
-            className="btn btn-ghost"
-            onClick={() => {
-              if (window.confirm('Tilbakestill all demodata i denne nettleseren?')) {
-                resetDemoData()
-                logout()
-                window.location.reload()
-              }
-            }}
-          >
-            Tilbakestill demodata
-          </button>
-        )}
       </div>
       <div className="tabs" role="tablist">
         {TABS.map((t) => (

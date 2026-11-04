@@ -1,5 +1,4 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { api } from '../api'
 import { useAuth } from '../auth'
 
 export default function Header() {
@@ -15,7 +14,6 @@ export default function Header() {
           <small>Stavanger &amp; Sandnes</small>
         </span>
       </NavLink>
-      {api.isDemo && <span className="demo-badge" title="Data lagres kun i nettleseren din">Demo</span>}
       <nav className="nav">
         <NavLink to="/" end>Kart</NavLink>
         {user && <NavLink to="/ny-park">Foreslå park</NavLink>}

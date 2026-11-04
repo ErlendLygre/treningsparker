@@ -1,7 +1,5 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../api'
-import { DEMO_ADMIN } from '../api/demoApi'
 import { useAuth } from '../auth'
 
 export default function LoginPage() {
@@ -43,21 +41,6 @@ export default function LoginPage() {
         <p className="small muted">
           Ny bruker? <Link to="/registrer">Opprett konto</Link>
         </p>
-        {api.isDemo && (
-          <div className="notice small">
-            <strong>Demo:</strong> logg inn som admin med <code>{DEMO_ADMIN.email}</code> / <code>{DEMO_ADMIN.password}</code>{' '}
-            <button
-              type="button"
-              className="link"
-              onClick={() => {
-                setEmail(DEMO_ADMIN.email)
-                setPassword(DEMO_ADMIN.password)
-              }}
-            >
-              Fyll inn
-            </button>
-          </div>
-        )}
       </form>
     </div>
   )

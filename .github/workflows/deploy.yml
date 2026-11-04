@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: deploy
@@ -21,35 +21,6 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - run: dotnet test backend/Treningsparker.sln
-
-  # Builds the frontend inside Docker and publishes the static output to the gh-pages branch,
-  # which GitHub Pages serves (Settings -> Pages -> Deploy from a branch -> gh-pages / root).
-  # Without the API_URL repository variable the site runs in demo mode (data stored in the browser).
-  # Set API_URL (Settings -> Secrets and variables -> Actions -> Variables) once the API is hosted.
-  pages:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Build static site in Docker
-        env:
-          API_URL: ${{ vars.API_URL }}
-          BASE: /${{ github.event.repository.name }}/
-        run: |
-          if [ -n "$API_URL" ]; then DEMO=false; else DEMO=true; fi
-          docker buildx build . -f frontend/Dockerfile --target static \
-            --build-arg VITE_DEMO_MODE=$DEMO \
-            --build-arg VITE_API_URL="$API_URL" \
-            --build-arg VITE_BASE="$BASE" \
-            --output type=local,dest=site
-          touch site/.nojekyll
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          publish_branch: gh-pages
-          force_orphan: true
 
   # Pushes the API and web images to Scaleway Container Registry and, once the Serverless
   # Containers exist, points them at the new images. Configure under Settings -> Secrets and variables -> Actions:

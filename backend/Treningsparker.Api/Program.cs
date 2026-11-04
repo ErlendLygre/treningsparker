@@ -20,9 +20,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         case "sqlite":
             options.UseSqlite(connectionString);
             break;
-        case "sqlserver":
-            options.UseSqlServer(connectionString);
-            break;
         default:
             options.UseNpgsql(PostgresConnectionString(connectionString), o => o.EnableRetryOnFailure(3));
             break;

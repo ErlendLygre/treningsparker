@@ -15,14 +15,14 @@ A map of free outdoor exercise parks (Tufteparker, calisthenics parks, outdoor g
 | --- | --- |
 | Frontend | React 18, TypeScript, Vite, Leaflet/react-leaflet, OpenStreetMap tiles |
 | Backend | ASP.NET Core 8 minimal API, EF Core, JWT auth, ASP.NET Identity password hashing |
-| Database | PostgreSQL 16+ (SQLite for local dev and tests; SQL Server also supported via `DatabaseProvider=SqlServer`) |
-| Hosting | Docker / docker compose, Scaleway Serverless Containers + Managed PostgreSQL, GitHub Pages (demo) |
+| Database | PostgreSQL 16+ (SQLite for local dev and tests) |
+| Hosting | Docker / docker compose, Scaleway Serverless Containers + Managed PostgreSQL |
 
 ```
 backend/   .NET API + xUnit integration tests
 frontend/  React app (+ nginx config for the container)
 data/      shared seed data (30 mock parks)
-.github/   CI and deploy (Pages + container images) workflows
+.github/   CI and deploy (Scaleway) workflows
 ```
 
 ## Running it
@@ -82,20 +82,6 @@ to run them against PostgreSQL instead; CI does both.
 
 ## Deployment
 
-### GitHub Pages (frontend)
-
-GitHub Pages only serves static files; it can't run the .NET API or the database. The `Deploy` workflow
-therefore builds the React app **inside Docker** (`frontend/Dockerfile`, `static` target) and publishes the output to Pages:
-
-- **No `API_URL` variable set** → the site is built in **demo mode**: the API is emulated in the browser with
-  `localStorage` (log in as admin with `admin@treningsparker.no` / `Admin123!`). Fine for showing the app off, but data is per browser and not secure.
-- **`API_URL` repository variable set** (e.g. `https://treningsparker-api.example.com`) → the Pages site talks to your hosted API.
-  Add the Pages origin (`https://<user>.github.io`) to the API's `Cors__Origins__0` setting.
-
-The site is pushed to the `gh-pages` branch, and GitHub normally enables Pages for it automatically. If it doesn't, open
-`https://github.com/<owner>/treningsparker/settings/pages` and choose *Deploy from a branch → `gh-pages` / `(root)`*.
-The workflow runs on pushes to `main`, or manually.
-
 ### Scaleway (production)
 
 The app runs on Scaleway as two **Serverless Containers** (`treningsparker-api` on port 8080 and
@@ -132,4 +118,3 @@ One-time setup, in this order:
    `SCW_WEB_CONTAINER_ID`. From now on every push to `main` deploys the new images.
 
 Open the `treningsparker-web` endpoint (or attach a custom domain to it) and log in with the admin credentials.
-The GitHub Pages site keeps running in demo mode alongside it.

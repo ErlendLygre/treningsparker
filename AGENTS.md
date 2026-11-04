@@ -6,25 +6,23 @@ before they appear on the public map. See README.md for the full user-facing doc
 ## Stack and layout
 
 - `frontend/` – React 18 + TypeScript + Vite, Leaflet/react-leaflet (OpenStreetMap tiles), React Router 7 (HashRouter).
-  - `src/api/httpApi.ts` talks to the .NET API; `src/api/demoApi.ts` is an in-browser fake of the same API used
-    for the GitHub Pages demo (`VITE_DEMO_MODE=true`). Both implement `src/api/types.ts` → keep them in sync.
+  - `src/api/httpApi.ts` talks to the .NET API (same origin, `/api/...`).
   - `nginx.conf.template` – serves the built app and proxies `/api` to `API_UPSTREAM`.
 - `backend/Treningsparker.Api/` – ASP.NET Core 8 minimal API, EF Core, JWT auth.
   - `Endpoints/` (routes, validation, DTOs), `Data/` (entities, DbContext, seeder), `Security/` (startup checks,
     rate limiting, login throttle).
 - `backend/Treningsparker.Api.Tests/` – xUnit integration tests via `WebApplicationFactory` (`ApiFactory`).
-- `data/parks.seed.json` – 30 **mock** parks, shared by the API seeder and the demo frontend.
-- Database: PostgreSQL in production (Scaleway Managed DB), SQLite for local dev and tests; SQL Server still
-  selectable via `DatabaseProvider`. Schema is created with `EnsureCreated` (no migrations).
+- `data/parks.seed.json` – 30 **mock** parks, loaded by the API seeder into an empty database.
+- Database: PostgreSQL in production (Scaleway Managed DB), SQLite for local dev and tests
+  (`DatabaseProvider`). Schema is created with `EnsureCreated` (no migrations).
 - Hosting: Scaleway Serverless Containers (`treningsparker-api`, `treningsparker-web`) in `nl-ams`, images in
-  Scaleway Container Registry; API and DB share a Private Network. GitHub Pages hosts the demo build.
+  Scaleway Container Registry; API and DB share a Private Network.
 
 ## Live URLs
 
 - Website (production): https://erlendcorptreningspaf8b8c8ea-treningsparker-web.functions.fnc.nl-ams.scw.cloud
 - API (production): https://erlendcorptreningspaf8b8c8ea-treningsparker-api.functions.fnc.nl-ams.scw.cloud
   – health checks: `/api/health` (API only) and `/api/health/db` (database round trip)
-- Demo (GitHub Pages, in-browser data): https://erlendlygre.github.io/treningsparker/
 
 ## Commands
 
@@ -62,7 +60,6 @@ docker compose up --build
 - New or changed API behaviour gets an integration test in `backend/Treningsparker.Api.Tests/`.
 - Validate input server-side (lengths, allowed values) and return `Results.ValidationProblem` (400), never a 500.
   Mirror limits with `maxLength` in forms.
-- Keep `demoApi.ts` behaviour matching the real API when you change endpoints.
 - Match the surrounding code style; keep comments sparse and explain *why*.
 - Commit messages: imperative subject, short body explaining why.
 
@@ -83,7 +80,7 @@ docker compose up --build
 
 ## Workflow and boundaries
 
-- `main` deploys to production automatically (Deploy workflow → Scaleway + GitHub Pages).
+- `main` deploys to production automatically (Deploy workflow → Scaleway).
   Push to a branch first and only update `main` once CI (`ci.yml`) is green.
 - Never commit secrets. Secrets live in Scaleway container secrets and GitHub Actions secrets/variables.
 - Don't change Scaleway resources, GitHub settings, secrets or variables – describe the steps for the owner instead.
