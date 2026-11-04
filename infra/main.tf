@@ -94,7 +94,6 @@ resource "scaleway_container" "api" {
   privacy                = "public"
   https_connections_only = true
   private_network_id     = scaleway_vpc_private_network.main.id
-  deploy                 = true
 
   environment_variables = {
     DatabaseProvider = "Postgres"
@@ -123,7 +122,6 @@ resource "scaleway_container" "web" {
   max_scale              = var.web_max_scale
   privacy                = "public"
   https_connections_only = true
-  deploy                 = true
 
   environment_variables = {
     API_UPSTREAM = local.api_url
