@@ -14,8 +14,9 @@ variable "zone" {
 }
 
 variable "admin_email" {
-  description = "Email of the app's admin user (GitHub secret ADMIN_EMAIL). Kept out of the public repo."
+  description = "Email of the app's admin user (GitHub secret ADMIN_EMAIL). Kept out of the public repo and logs."
   type        = string
+  sensitive   = true
 }
 
 # Names of the existing resources. They must match what's in Scaleway, or they'll be renamed on apply.
