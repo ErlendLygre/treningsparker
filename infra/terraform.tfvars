@@ -1,10 +1,9 @@
 # Non-secret settings, committed. Names must match the existing Scaleway resources exactly.
-# TODO: replace the <...> values with the names shown in the Scaleway console before the first import/plan.
-private_network_name     = "<private network name>"
-registry_namespace_name  = "<registry namespace name>"
-container_namespace_name = "<container namespace name>"
-db_instance_name         = "<database instance name>"
-db_user_name             = "<database admin user name>"
+private_network_name     = "treningsparker"
+registry_namespace_name  = "treningsparker"
+container_namespace_name = "erlendcorp-treningsparker"
+db_instance_name         = "treningsparker"
+db_user_name             = "adminparktrening"
 
 db_engine     = "PostgreSQL-17"
 db_node_type  = "DB-DEV-S"
