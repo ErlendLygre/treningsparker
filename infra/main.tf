@@ -86,7 +86,7 @@ locals {
 resource "scaleway_container" "api" {
   name                   = "treningsparker-api"
   namespace_id           = scaleway_container_namespace.main.id
-  registry_image         = "${scaleway_registry_namespace.main.endpoint}/treningsparker-api:latest"
+  image                  = "${scaleway_registry_namespace.main.endpoint}/treningsparker-api:latest"
   port                   = 8080
   memory_limit           = var.api_memory_mb
   min_scale              = var.api_min_scale
@@ -108,14 +108,20 @@ resource "scaleway_container" "api" {
 
   lifecycle {
     # The Deploy workflow points the container at each new image tag.
-    ignore_changes = [registry_image]
+    ignore_changes = [image, registry_image]
+
+    # Without permission to read the private IP (IPAM), the connection string would get an empty host.
+    precondition {
+      condition     = try(local.db_endpoint.ip, "") != "" && try(local.db_endpoint.port, 0) > 0
+      error_message = "Database private IP/port is unknown. Give the OpenTofu key read access to IPAM (IPAMReadOnly)."
+    }
   }
 }
 
 resource "scaleway_container" "web" {
   name                   = "treningsparker-web"
   namespace_id           = scaleway_container_namespace.main.id
-  registry_image         = "${scaleway_registry_namespace.main.endpoint}/treningsparker-web:latest"
+  image                  = "${scaleway_registry_namespace.main.endpoint}/treningsparker-web:latest"
   port                   = 80
   memory_limit           = var.web_memory_mb
   min_scale              = 0
@@ -128,6 +134,6 @@ resource "scaleway_container" "web" {
   }
 
   lifecycle {
-    ignore_changes = [registry_image]
+    ignore_changes = [image, registry_image]
   }
 }
