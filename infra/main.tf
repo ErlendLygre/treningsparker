@@ -68,6 +68,10 @@ resource "random_password" "admin" {
 }
 
 locals {
+  # public_endpoint may or may not include the scheme; normalise to a full https URL.
+  api_url = startswith(scaleway_container.api.public_endpoint, "https://") ? scaleway_container.api.public_endpoint : "https://${scaleway_container.api.public_endpoint}"
+  web_url = startswith(scaleway_container.web.public_endpoint, "https://") ? scaleway_container.web.public_endpoint : "https://${scaleway_container.web.public_endpoint}"
+
   db_endpoint = scaleway_rdb_instance.main.private_network[0]
   connection_string = join(";", [
     "Host=${local.db_endpoint.ip}",
@@ -80,17 +84,17 @@ locals {
 }
 
 resource "scaleway_container" "api" {
-  name               = "treningsparker-api"
-  namespace_id       = scaleway_container_namespace.main.id
-  registry_image     = "${scaleway_registry_namespace.main.endpoint}/treningsparker-api:latest"
-  port               = 8080
-  memory_limit       = var.api_memory_mb
-  min_scale          = var.api_min_scale
-  max_scale          = var.api_max_scale
-  privacy            = "public"
-  http_option        = "redirected"
-  private_network_id = scaleway_vpc_private_network.main.id
-  deploy             = true
+  name                   = "treningsparker-api"
+  namespace_id           = scaleway_container_namespace.main.id
+  registry_image         = "${scaleway_registry_namespace.main.endpoint}/treningsparker-api:latest"
+  port                   = 8080
+  memory_limit           = var.api_memory_mb
+  min_scale              = var.api_min_scale
+  max_scale              = var.api_max_scale
+  privacy                = "public"
+  https_connections_only = true
+  private_network_id     = scaleway_vpc_private_network.main.id
+  deploy                 = true
 
   environment_variables = {
     DatabaseProvider = "Postgres"
@@ -110,19 +114,19 @@ resource "scaleway_container" "api" {
 }
 
 resource "scaleway_container" "web" {
-  name           = "treningsparker-web"
-  namespace_id   = scaleway_container_namespace.main.id
-  registry_image = "${scaleway_registry_namespace.main.endpoint}/treningsparker-web:latest"
-  port           = 80
-  memory_limit   = var.web_memory_mb
-  min_scale      = 0
-  max_scale      = var.web_max_scale
-  privacy        = "public"
-  http_option    = "redirected"
-  deploy         = true
+  name                   = "treningsparker-web"
+  namespace_id           = scaleway_container_namespace.main.id
+  registry_image         = "${scaleway_registry_namespace.main.endpoint}/treningsparker-web:latest"
+  port                   = 80
+  memory_limit           = var.web_memory_mb
+  min_scale              = 0
+  max_scale              = var.web_max_scale
+  privacy                = "public"
+  https_connections_only = true
+  deploy                 = true
 
   environment_variables = {
-    API_UPSTREAM = "https://${scaleway_container.api.domain_name}"
+    API_UPSTREAM = local.api_url
   }
 
   lifecycle {

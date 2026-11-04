@@ -1,9 +1,9 @@
 output "website_url" {
-  value = "https://${scaleway_container.web.domain_name}"
+  value = local.web_url
 }
 
 output "api_url" {
-  value = "https://${scaleway_container.api.domain_name}"
+  value = local.api_url
 }
 
 # Used by the Deploy workflow (GitHub variables SCW_API_CONTAINER_ID / SCW_WEB_CONTAINER_ID).
