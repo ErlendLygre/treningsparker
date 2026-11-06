@@ -24,3 +24,7 @@ import scaleway_registry_namespace.main    "$REGION/${SCW_REGISTRY_NAMESPACE_ID:
 import scaleway_container_namespace.main   "$REGION/${SCW_CONTAINER_NAMESPACE_ID:-}"
 import scaleway_container.api              "$REGION/${SCW_API_CONTAINER_ID:-}"
 import scaleway_container.web              "$REGION/${SCW_WEB_CONTAINER_ID:-}"
+# Only if the domain was added in the console first (set SCW_WEB_DOMAIN_ID to its ID).
+if [ -n "${SCW_WEB_DOMAIN_ID:-}" ]; then
+  import scaleway_container_domain.web     "$REGION/$SCW_WEB_DOMAIN_ID"
+fi

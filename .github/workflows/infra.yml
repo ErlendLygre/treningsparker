@@ -76,6 +76,7 @@ jobs:
           SCW_CONTAINER_NAMESPACE_ID: ${{ vars.SCW_CONTAINER_NAMESPACE_ID }}
           SCW_API_CONTAINER_ID: ${{ vars.SCW_API_CONTAINER_ID }}
           SCW_WEB_CONTAINER_ID: ${{ vars.SCW_WEB_CONTAINER_ID }}
+          SCW_WEB_DOMAIN_ID: ${{ vars.SCW_WEB_DOMAIN_ID }}
         run: ./import.sh
 
       - name: Plan

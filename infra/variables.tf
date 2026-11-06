@@ -74,6 +74,11 @@ variable "web_memory_mb" {
   default = 128
 }
 
+variable "custom_domain" {
+  description = "Hostname for the website; its CNAME must point to the web container."
+  type        = string
+}
+
 variable "web_max_scale" {
   type    = number
   default = 2

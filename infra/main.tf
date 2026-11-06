@@ -88,7 +88,7 @@ resource "scaleway_container" "api" {
   namespace_id           = scaleway_container_namespace.main.id
   image                  = "${scaleway_registry_namespace.main.endpoint}/treningsparker-api:latest"
   port                   = 8080
-  memory_limit           = var.api_memory_mb
+  memory_limit_bytes     = var.api_memory_mb * 1024 * 1024
   min_scale              = var.api_min_scale
   max_scale              = var.api_max_scale
   privacy                = "public"
@@ -123,7 +123,7 @@ resource "scaleway_container" "web" {
   namespace_id           = scaleway_container_namespace.main.id
   image                  = "${scaleway_registry_namespace.main.endpoint}/treningsparker-web:latest"
   port                   = 80
-  memory_limit           = var.web_memory_mb
+  memory_limit_bytes     = var.web_memory_mb * 1024 * 1024
   min_scale              = 0
   max_scale              = var.web_max_scale
   privacy                = "public"
@@ -136,4 +136,11 @@ resource "scaleway_container" "web" {
   lifecycle {
     ignore_changes = [image, registry_image]
   }
+}
+
+# Custom domain for the website. Needs a CNAME at the DNS provider (Domeneshop) pointing to the web
+# container's endpoint; Scaleway then issues a Let's Encrypt certificate for it.
+resource "scaleway_container_domain" "web" {
+  container_id = scaleway_container.web.id
+  hostname     = var.custom_domain
 }
