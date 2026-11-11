@@ -1,18 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { api } from '../api'
+import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth'
 import StatusBadge from '../components/StatusBadge'
-import type { Park } from '../types'
 
 export default function MyParksPage() {
   const { token } = useAuth()
-  const [parks, setParks] = useState<Park[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    api.getMyParks(token!).then(setParks).catch((e: Error) => setError(e.message))
-  }, [token])
+  const { data: parks, error } = useApiData(`mine:${token}`, (signal) => api.getMyParks(token!, signal))
 
   return (
     <div className="page">

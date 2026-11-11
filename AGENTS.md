@@ -5,8 +5,10 @@ before they appear on the public map. See README.md for the full user-facing doc
 
 ## Stack and layout
 
-- `frontend/` – React 18 + TypeScript + Vite, Leaflet/react-leaflet (OpenStreetMap tiles), React Router 7 (HashRouter).
-  - `src/api/httpApi.ts` talks to the .NET API (same origin, `/api/...`).
+- `frontend/` – React 19 with the React Compiler (no manual `useMemo`/`useCallback`), TypeScript 6, Vite 8,
+  Leaflet/react-leaflet 5 (OpenStreetMap tiles), React Router 8 (`react-router`, HashRouter). Built on Node 26 LTS.
+  - `src/api/httpApi.ts` talks to the .NET API (same origin, `/api/...`). Load data with `useApiData`
+    (`src/api/useApiData.ts`), which aborts stale requests; forms submit through `useActionState`.
   - `nginx.conf.template` – serves the built app and proxies `/api` to `API_UPSTREAM`.
 - `backend/Treningsparker.Api/` – ASP.NET Core 10 minimal API (.NET 10 LTS, pinned in `global.json`), EF Core 10, JWT auth.
   Requests are validated by the built-in minimal API validation (attributes and `IValidatableObject` on the

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { MapContainer, Marker, TileLayer } from 'react-leaflet'
 import { api } from '../api'
+import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth'
 import ParkDetails from '../components/ParkDetails'
 import StatusBadge from '../components/StatusBadge'
@@ -17,22 +18,19 @@ const TABS: { status: ParkStatus | undefined; label: string }[] = [
 export default function AdminPage() {
   const { token } = useAuth()
   const [tab, setTab] = useState<ParkStatus | undefined>('Pending')
-  const [parks, setParks] = useState<Park[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(() => {
-    setError(null)
-    api.getAdminParks(token!, tab).then(setParks).catch((e: Error) => setError(e.message))
-  }, [token, tab])
-
-  useEffect(load, [load])
+  const { data: parks, error: loadError, reload } = useApiData(`admin:${token}:${tab ?? 'all'}`, (signal) =>
+    api.getAdminParks(token!, tab, signal),
+  )
+  const [actionError, setActionError] = useState<string | null>(null)
+  const error = actionError ?? loadError
 
   const run = async (action: () => Promise<unknown>) => {
     try {
       await action()
-      load()
+      setActionError(null)
+      reload()
     } catch (e) {
-      setError((e as Error).message)
+      setActionError(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -52,7 +50,7 @@ export default function AdminPage() {
       </div>
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
-          <button key={t.label} role="tab" aria-selected={tab === t.status} className={tab === t.status ? 'active' : ''} onClick={() => setTab(t.status)}>
+          <button key={t.label} role="tab" aria-selected={tab === t.status} className={tab === t.status ? 'active' : ''} onClick={() => { setActionError(null); setTab(t.status) }}>
             {t.label}
           </button>
         ))}

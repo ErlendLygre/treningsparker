@@ -40,11 +40,11 @@ export function createHttpApi(baseUrl: string): Api {
     login: (email, password) => request<AuthResponse>(baseUrl, '/api/auth/login', post({ email, password })),
     register: (email, password, displayName) =>
       request<AuthResponse>(baseUrl, '/api/auth/register', post({ email, password, displayName })),
-    getParks: () => request<Park[]>(baseUrl, '/api/parks'),
-    getMyParks: (token) => request<Park[]>(baseUrl, '/api/parks/mine', {}, token),
+    getParks: (signal) => request<Park[]>(baseUrl, '/api/parks', { signal }),
+    getMyParks: (token, signal) => request<Park[]>(baseUrl, '/api/parks/mine', { signal }, token),
     createPark: (token, park: NewPark) => request<Park>(baseUrl, '/api/parks', post(park), token),
-    getAdminParks: (token, status?: ParkStatus) =>
-      request<Park[]>(baseUrl, `/api/admin/parks${status ? `?status=${status}` : ''}`, {}, token),
+    getAdminParks: (token, status?: ParkStatus, signal?: AbortSignal) =>
+      request<Park[]>(baseUrl, `/api/admin/parks${status ? `?status=${status}` : ''}`, { signal }, token),
     approvePark: (token, id) => request<Park>(baseUrl, `/api/admin/parks/${id}/approve`, { method: 'POST' }, token),
     rejectPark: (token, id, reason) => request<Park>(baseUrl, `/api/admin/parks/${id}/reject`, post({ reason }), token),
     deletePark: (token, id) => request<void>(baseUrl, `/api/admin/parks/${id}`, { method: 'DELETE' }, token),

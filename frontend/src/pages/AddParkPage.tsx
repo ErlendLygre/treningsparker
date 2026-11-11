@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useActionState, useState } from 'react'
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { newParkIcon, REGION_CENTER, TILE_ATTRIBUTION, TILE_URL } from '../components/markers'
@@ -30,40 +30,33 @@ export default function AddParkPage() {
   const [equipment, setEquipment] = useState<string[]>([])
   const [hasLighting, setHasLighting] = useState(false)
   const [location, setLocation] = useState<LatLng | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [created, setCreated] = useState<Park | null>(null)
 
   const toggleEquipment = (item: string) =>
     setEquipment((list) => (list.includes(item) ? list.filter((e) => e !== item) : [...list, item]))
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!location) {
-      setError('Klikk i kartet for å velge hvor parken ligger.')
-      return
-    }
-    setBusy(true)
-    setError(null)
-    try {
-      const park = await api.createPark(token!, {
-        name,
-        description,
-        city,
-        area,
-        parkType,
-        equipment,
-        hasLighting,
-        latitude: Number(location.lat.toFixed(6)),
-        longitude: Number(location.lng.toFixed(6)),
-      })
-      setCreated(park)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
+  // The fields are controlled (the map picker and checkboxes need state), so the action reads them from state.
+  const [{ error, created }, submit, pending] = useActionState(
+    async (): Promise<{ error: string | null; created: Park | null }> => {
+      if (!location) return { error: 'Klikk i kartet for å velge hvor parken ligger.', created: null }
+      try {
+        const park = await api.createPark(token!, {
+          name,
+          description,
+          city,
+          area,
+          parkType,
+          equipment,
+          hasLighting,
+          latitude: Number(location.lat.toFixed(6)),
+          longitude: Number(location.lng.toFixed(6)),
+        })
+        return { error: null, created: park }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err), created: null }
+      }
+    },
+    { error: null, created: null },
+  )
 
   if (created) {
     return (
@@ -87,7 +80,7 @@ export default function AddParkPage() {
     <div className="page">
       <h1>Foreslå en ny treningspark</h1>
       <p className="muted">Forslaget blir synlig på kartet etter at en administrator har godkjent det.</p>
-      <form className="add-park" onSubmit={submit}>
+      <form className="add-park" action={submit}>
         <div className="card form">
           <label>
             Navn på parken
@@ -131,7 +124,7 @@ export default function AddParkPage() {
             <textarea rows={3} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
           {error && <p className="error">{error}</p>}
-          <button className="btn btn-primary" disabled={busy}>{busy ? 'Sender…' : 'Send inn forslag'}</button>
+          <button className="btn btn-primary" disabled={pending}>{pending ? 'Sender…' : 'Send inn forslag'}</button>
         </div>
         <div className="card picker">
           <p className="small">

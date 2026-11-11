@@ -1,43 +1,45 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useActionState } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../auth'
+
+interface LoginState {
+  error: string | null
+  email: string
+}
 
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      await login(email, password)
-      navigate('/')
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const [state, formAction, pending] = useActionState(
+    async (_previous: LoginState, form: FormData): Promise<LoginState> => {
+      const email = String(form.get('email') ?? '')
+      try {
+        await login(email, String(form.get('password') ?? ''))
+        navigate('/')
+        return { error: null, email: '' }
+      } catch (err) {
+        // React resets the form after the action; returning the email puts it back as the default value.
+        return { error: err instanceof Error ? err.message : String(err), email }
+      }
+    },
+    { error: null, email: '' },
+  )
 
   return (
     <div className="page narrow">
-      <form className="card form" onSubmit={submit}>
+      <form className="card form" action={formAction}>
         <h1>Logg inn</h1>
         <label>
           E-post
-          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input name="email" type="email" required autoComplete="email" defaultValue={state.email} />
         </label>
         <label>
           Passord
-          <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input name="password" type="password" required autoComplete="current-password" />
         </label>
-        {error && <p className="error">{error}</p>}
-        <button className="btn btn-primary" disabled={busy}>{busy ? 'Logger inn…' : 'Logg inn'}</button>
+        {state.error && <p className="error">{state.error}</p>}
+        <button className="btn btn-primary" disabled={pending}>{pending ? 'Logger inn…' : 'Logg inn'}</button>
         <p className="small muted">
           Ny bruker? <Link to="/registrer">Opprett konto</Link>
         </p>

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import type { Marker as LeafletMarker } from 'leaflet'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { api } from '../api'
+import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth'
 import ParkDetails from '../components/ParkDetails'
 import { parkIcon, REGION_CENTER, TILE_ATTRIBUTION, TILE_URL, TYPE_COLORS } from '../components/markers'
@@ -18,9 +19,7 @@ function FlyTo({ park }: { park: Park | null }) {
 
 export default function MapPage() {
   const { user } = useAuth()
-  const [parks, setParks] = useState<Park[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: parks = [], error, loading } = useApiData('parks', (signal) => api.getParks(signal))
   const [search, setSearch] = useState('')
   const [city, setCity] = useState('')
   const [type, setType] = useState('')
@@ -28,24 +27,14 @@ export default function MapPage() {
   const [selected, setSelected] = useState<Park | null>(null)
   const markers = useRef(new Map<number, LeafletMarker>())
 
-  useEffect(() => {
-    api
-      .getParks()
-      .then(setParks)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return parks.filter(
-      (p) =>
-        (!city || p.city === city) &&
-        (!type || p.parkType === type) &&
-        (!lightOnly || p.hasLighting) &&
-        (!q || `${p.name} ${p.area} ${p.equipment.join(' ')}`.toLowerCase().includes(q)),
-    )
-  }, [parks, search, city, type, lightOnly])
+  const q = search.trim().toLowerCase()
+  const filtered = parks.filter(
+    (p) =>
+      (!city || p.city === city) &&
+      (!type || p.parkType === type) &&
+      (!lightOnly || p.hasLighting) &&
+      (!q || `${p.name} ${p.area} ${p.equipment.join(' ')}`.toLowerCase().includes(q)),
+  )
 
   const select = (park: Park) => {
     setSelected(park)
@@ -123,8 +112,11 @@ export default function MapPage() {
               position={[p.latitude, p.longitude]}
               icon={parkIcon(p.parkType, selected?.id === p.id)}
               ref={(m) => {
-                if (m) markers.current.set(p.id, m)
-                else markers.current.delete(p.id)
+                if (!m) return
+                markers.current.set(p.id, m)
+                return () => {
+                  markers.current.delete(p.id)
+                }
               }}
               eventHandlers={{ click: () => setSelected(p) }}
             >

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router'
 import type { ReactNode } from 'react'
 import Header from './components/Header'
 import { useAuth } from './auth'

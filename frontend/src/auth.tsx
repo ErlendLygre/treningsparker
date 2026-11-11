@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, use, useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 import { api, setUnauthorizedHandler } from './api'
 import type { AuthResponse, User } from './types'
 
@@ -37,7 +37,7 @@ function readStored(): AuthResponse | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthResponse | null>(readStored)
 
-  const store = useCallback((value: AuthResponse | null) => {
+  const store = (value: AuthResponse | null) => {
     setAuth(value)
     try {
       if (value) localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
@@ -45,38 +45,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* storage unavailable */
     }
-  }, [])
+  }
 
   // Log out when the API rejects the token, and when it expires while the page is open.
+  const logOut = useEffectEvent(() => store(null))
+
   useEffect(() => {
-    setUnauthorizedHandler(() => store(null))
+    setUnauthorizedHandler(() => logOut())
     return () => setUnauthorizedHandler(null)
-  }, [store])
+  }, [])
 
+  const token = auth?.token
   useEffect(() => {
-    const expiry = auth && tokenExpiry(auth.token)
+    const expiry = token && tokenExpiry(token)
     if (!expiry) return
-    const timer = setTimeout(() => store(null), Math.max(0, expiry - Date.now()))
+    const timer = setTimeout(() => logOut(), Math.max(0, expiry - Date.now()))
     return () => clearTimeout(timer)
-  }, [auth, store])
+  }, [token])
 
-  const value = useMemo<AuthState>(
-    () => ({
-      user: auth?.user ?? null,
-      token: auth?.token ?? null,
-      login: async (email, password) => store(await api.login(email, password)),
-      register: async (email, password, displayName) => store(await api.register(email, password, displayName)),
-      logout: () => store(null),
-    }),
-    [auth, store],
-  )
+  const value: AuthState = {
+    user: auth?.user ?? null,
+    token: auth?.token ?? null,
+    login: async (email, password) => store(await api.login(email, password)),
+    register: async (email, password, displayName) => store(await api.register(email, password, displayName)),
+    logout: () => store(null),
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext value={value}>{children}</AuthContext>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
-  const ctx = useContext(AuthContext)
+  const ctx = use(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
   return ctx
 }
