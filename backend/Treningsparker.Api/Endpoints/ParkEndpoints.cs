@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Treningsparker.Api.Data;
 using Treningsparker.Api.Security;
@@ -7,44 +8,41 @@ namespace Treningsparker.Api.Endpoints;
 
 public static class ParkEndpoints
 {
-    public static readonly string[] Cities = ["Stavanger", "Sandnes"];
-    public static readonly string[] ParkTypes = ["Tuftepark", "Calisthenicspark", "Treningspark", "Hinderløype"];
-
     public static void MapParkEndpoints(this IEndpointRouteBuilder app)
     {
         var parks = app.MapGroup("/api/parks");
 
         // Public: only approved parks are visible on the map.
-        parks.MapGet("/", async (AppDbContext db, string? city) =>
+        parks.MapGet("/", async (AppDbContext db, string? city, CancellationToken ct) =>
         {
-            var query = db.Parks.Include(p => p.CreatedBy).Where(p => p.Status == ParkStatus.Approved);
+            var query = db.Parks.AsNoTracking().Include(p => p.CreatedBy).Where(p => p.Status == ParkStatus.Approved);
             if (!string.IsNullOrWhiteSpace(city)) query = query.Where(p => p.City == city);
-            var list = await query.OrderBy(p => p.City).ThenBy(p => p.Name).ToListAsync();
-            return list.Select(ParkDto.From);
+            var list = await query.OrderBy(p => p.City).ThenBy(p => p.Name).ToListAsync(ct);
+            return TypedResults.Ok(list.Select(ParkDto.From));
         });
 
-        parks.MapGet("/{id:int}", async (int id, AppDbContext db) =>
+        parks.MapGet("/{id:int}", async Task<Results<Ok<ParkDto>, NotFound>> (int id, AppDbContext db, CancellationToken ct) =>
         {
-            var park = await db.Parks.Include(p => p.CreatedBy)
-                .FirstOrDefaultAsync(p => p.Id == id && p.Status == ParkStatus.Approved);
-            return park is null ? Results.NotFound() : Results.Ok(ParkDto.From(park));
+            var park = await db.Parks.AsNoTracking().Include(p => p.CreatedBy)
+                .FirstOrDefaultAsync(p => p.Id == id && p.Status == ParkStatus.Approved, ct);
+            return park is null ? TypedResults.NotFound() : TypedResults.Ok(ParkDto.From(park));
         });
 
-        parks.MapGet("/mine", async (ClaimsPrincipal user, AppDbContext db) =>
+        parks.MapGet("/mine", async Task<Results<Ok<IEnumerable<ParkDto>>, UnauthorizedHttpResult>> (
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var userId = user.GetUserId();
-            var list = await db.Parks.Include(p => p.CreatedBy)
+            if (user.GetUserId() is not int userId) return TypedResults.Unauthorized();
+            var list = await db.Parks.AsNoTracking().Include(p => p.CreatedBy)
                 .Where(p => p.CreatedByUserId == userId)
-                .OrderByDescending(p => p.CreatedAt).ToListAsync();
-            return list.Select(ParkDto.From);
+                .OrderByDescending(p => p.CreatedAt).ToListAsync(ct);
+            return TypedResults.Ok(list.Select(ParkDto.From));
         }).RequireAuthorization();
 
         // Logged in users can suggest new parks. They stay pending until an admin approves them.
-        parks.MapPost("/", async (CreateParkRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        parks.MapPost("/", async Task<Results<Created<ParkDto>, UnauthorizedHttpResult>> (
+            CreateParkRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var errors = Validate(req);
-            if (errors.Count > 0) return Results.ValidationProblem(errors);
-
+            if (user.GetUserId() is not int userId) return TypedResults.Unauthorized();
             var park = new Park
             {
                 Name = req.Name.Trim(),
@@ -54,79 +52,49 @@ public static class ParkEndpoints
                 Latitude = req.Latitude,
                 Longitude = req.Longitude,
                 ParkType = string.IsNullOrWhiteSpace(req.ParkType) ? "Treningspark" : req.ParkType,
-                Equipment = string.Join(';', CleanEquipment(req.Equipment)),
+                Equipment = string.Join(';', req.CleanEquipment),
                 HasLighting = req.HasLighting,
                 Status = ParkStatus.Pending,
-                CreatedByUserId = user.GetUserId(),
+                CreatedByUserId = userId,
             };
             db.Parks.Add(park);
-            await db.SaveChangesAsync();
-            await db.Entry(park).Reference(p => p.CreatedBy).LoadAsync();
-            return Results.Created($"/api/parks/{park.Id}", ParkDto.From(park));
+            await db.SaveChangesAsync(ct);
+            await db.Entry(park).Reference(p => p.CreatedBy).LoadAsync(ct);
+            return TypedResults.Created($"/api/parks/{park.Id}", ParkDto.From(park));
         }).RequireAuthorization().RequireRateLimiting(RateLimiting.Submissions);
 
         var admin = app.MapGroup("/api/admin/parks").RequireAuthorization("Admin");
 
-        admin.MapGet("/", async (AppDbContext db, string? status) =>
+        admin.MapGet("/", async (AppDbContext db, string? status, CancellationToken ct) =>
         {
-            var query = db.Parks.Include(p => p.CreatedBy).AsQueryable();
+            var query = db.Parks.AsNoTracking().Include(p => p.CreatedBy).AsQueryable();
             if (Enum.TryParse<ParkStatus>(status, true, out var s)) query = query.Where(p => p.Status == s);
-            var list = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
-            return list.Select(ParkDto.From);
+            var list = await query.OrderByDescending(p => p.CreatedAt).ToListAsync(ct);
+            return TypedResults.Ok(list.Select(ParkDto.From));
         });
 
-        admin.MapPost("/{id:int}/approve", async (int id, AppDbContext db) =>
-        {
-            var park = await db.Parks.Include(p => p.CreatedBy).FirstOrDefaultAsync(p => p.Id == id);
-            if (park is null) return Results.NotFound();
-            park.Status = ParkStatus.Approved;
-            park.RejectionReason = null;
-            park.ReviewedAt = DateTime.UtcNow;
-            await db.SaveChangesAsync();
-            return Results.Ok(ParkDto.From(park));
-        });
+        admin.MapPost("/{id:int}/approve", (int id, AppDbContext db, TimeProvider time, CancellationToken ct) =>
+            Review(db, id, ParkStatus.Approved, null, time, ct));
 
-        admin.MapPost("/{id:int}/reject", async (int id, RejectRequest req, AppDbContext db) =>
-        {
-            if (req.Reason?.Trim().Length > 500)
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["reason"] = ["Begrunnelsen kan være maks 500 tegn."] });
-            var park = await db.Parks.Include(p => p.CreatedBy).FirstOrDefaultAsync(p => p.Id == id);
-            if (park is null) return Results.NotFound();
-            park.Status = ParkStatus.Rejected;
-            park.RejectionReason = req.Reason?.Trim();
-            park.ReviewedAt = DateTime.UtcNow;
-            await db.SaveChangesAsync();
-            return Results.Ok(ParkDto.From(park));
-        });
+        admin.MapPost("/{id:int}/reject", (int id, RejectRequest req, AppDbContext db, TimeProvider time, CancellationToken ct) =>
+            Review(db, id, ParkStatus.Rejected, req.Reason?.Trim(), time, ct));
 
-        admin.MapDelete("/{id:int}", async (int id, AppDbContext db) =>
+        admin.MapDelete("/{id:int}", async Task<Results<NoContent, NotFound>> (int id, AppDbContext db, CancellationToken ct) =>
         {
-            var park = await db.Parks.FindAsync(id);
-            if (park is null) return Results.NotFound();
-            db.Parks.Remove(park);
-            await db.SaveChangesAsync();
-            return Results.NoContent();
+            var deleted = await db.Parks.Where(p => p.Id == id).ExecuteDeleteAsync(ct);
+            return deleted == 0 ? TypedResults.NotFound() : TypedResults.NoContent();
         });
     }
 
-    private static Dictionary<string, string[]> Validate(CreateParkRequest req)
+    private static async Task<Results<Ok<ParkDto>, NotFound>> Review(
+        AppDbContext db, int id, ParkStatus status, string? reason, TimeProvider time, CancellationToken ct)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(req.Name) || req.Name.Trim().Length > 150) errors["name"] = ["Navn er påkrevd (maks 150 tegn)."];
-        if (!Cities.Contains(req.City)) errors["city"] = ["By må være Stavanger eller Sandnes."];
-        if (req.ParkType is not null && !ParkTypes.Contains(req.ParkType)) errors["parkType"] = ["Ukjent parktype."];
-        // Rough bounding box around Stavanger and Sandnes.
-        if (req.Latitude is < 58.70 or > 59.10 || req.Longitude is < 5.45 or > 6.10)
-            errors["location"] = ["Plasseringen må være i Stavanger/Sandnes-området."];
-        if (req.Description?.Trim().Length > 2000) errors["description"] = ["Beskrivelsen kan være maks 2000 tegn."];
-        if (req.Area?.Trim().Length > 100) errors["area"] = ["Område kan være maks 100 tegn."];
-        var equipment = CleanEquipment(req.Equipment);
-        if (equipment.Count > 20 || equipment.Any(e => e.Length > 50) || string.Join(';', equipment).Length > 1000)
-            errors["equipment"] = ["Maks 20 apparater, hver på maks 50 tegn."];
-        return errors;
+        var park = await db.Parks.Include(p => p.CreatedBy).FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (park is null) return TypedResults.NotFound();
+        park.Status = status;
+        park.RejectionReason = reason;
+        park.ReviewedAt = time.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(ct);
+        return TypedResults.Ok(ParkDto.From(park));
     }
-
-    // Equipment is stored semicolon separated, so semicolons inside an item are dropped.
-    private static List<string> CleanEquipment(string[]? equipment) =>
-        (equipment ?? []).Select(e => e.Replace(";", "").Trim()).Where(e => e.Length > 0).Distinct().ToList();
 }

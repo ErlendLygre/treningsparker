@@ -41,8 +41,8 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: opentofu/setup-opentofu@v1
+      - uses: actions/checkout@v7
+      - uses: opentofu/setup-opentofu@v2
       - run: tofu fmt -check -recursive -diff
       - run: tofu init -backend=false -input=false
       - run: tofu validate
@@ -59,8 +59,8 @@ jobs:
       TF_VAR_admin_email: ${{ secrets.ADMIN_EMAIL }}
       TF_IN_AUTOMATION: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: opentofu/setup-opentofu@v1
+      - uses: actions/checkout@v7
+      - uses: opentofu/setup-opentofu@v2
         with:
           tofu_wrapper: false
 

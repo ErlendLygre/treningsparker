@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -29,7 +27,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.MapInboundClaims = true;
+        // Keep claim names as they are in the token (sub, role, ...) instead of mapping them to long URIs.
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -37,7 +36,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = config["Jwt:Audience"],
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!)),
+            IssuerSigningKey = TokenService.SigningKey(config),
+            NameClaimType = AppClaims.Name,
+            RoleClaimType = AppClaims.Role,
         };
         // Tokens live for hours, so check on each request that the user still exists and that admin
         // rights haven't been revoked since the token was issued.
@@ -46,16 +47,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnTokenValidated = async context =>
             {
                 var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                var user = int.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
-                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id)
+                var user = context.Principal?.GetUserId() is int id
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, context.HttpContext.RequestAborted)
                     : null;
-                if (user is null || (context.Principal!.IsInRole("Admin") && !user.IsAdmin))
+                if (user is null || (context.Principal!.IsInRole(AppClaims.AdminRole) && !user.IsAdmin))
                     context.Fail("User no longer exists or is no longer an admin.");
             },
         };
     });
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    .AddPolicy("Admin", policy => policy.RequireRole(AppClaims.AdminRole));
 
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(config.GetSection("Cors:Origins").Get<string[]>() ?? [])
@@ -63,7 +64,9 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
         .AllowAnyMethod()));
 
 builder.Services.AddProblemDetails();
+builder.Services.AddValidation();
 builder.Services.AddAppRateLimiting(config);
+builder.Services.AddSingleton<TokenService>();
 
 var app = builder.Build();
 
@@ -72,20 +75,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/health", () => TypedResults.Ok(new { status = "ok" }));
 
 // Measures a database round trip, to tell slow database connections apart from a slow API.
-app.MapGet("/api/health/db", async (AppDbContext db) =>
+app.MapGet("/api/health/db", async (AppDbContext db, CancellationToken ct) =>
 {
-    var watch = System.Diagnostics.Stopwatch.StartNew();
+    var started = System.Diagnostics.Stopwatch.GetTimestamp();
     try
     {
-        var parks = await db.Parks.CountAsync();
-        return Results.Ok(new { status = "ok", parks, elapsedMs = watch.ElapsedMilliseconds });
+        var parks = await db.Parks.CountAsync(ct);
+        return Results.Ok(new { status = "ok", parks, elapsedMs = (long)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds });
     }
-    catch (Exception ex)
+    catch (Exception ex) when (ex is not OperationCanceledException)
     {
-        return Results.Json(new { status = "error", error = ex.GetType().Name, elapsedMs = watch.ElapsedMilliseconds }, statusCode: 503);
+        return Results.Json(new { status = "error", error = ex.GetType().Name, elapsedMs = (long)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 });
 app.MapAuthEndpoints();

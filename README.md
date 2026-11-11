@@ -14,7 +14,7 @@ A map of free outdoor exercise parks (Tufteparker, calisthenics parks, outdoor g
 | Part | Tech |
 | --- | --- |
 | Frontend | React 18, TypeScript, Vite, Leaflet/react-leaflet, OpenStreetMap tiles |
-| Backend | ASP.NET Core 8 minimal API, EF Core, JWT auth, ASP.NET Identity password hashing |
+| Backend | ASP.NET Core 10 minimal API (.NET 10 LTS), EF Core 10, built-in validation, JWT auth, ASP.NET Identity password hashing |
 | Database | PostgreSQL 16+ (SQLite for local dev and tests) |
 | Hosting | Docker / docker compose, Scaleway Serverless Containers + Managed PostgreSQL |
 
@@ -46,7 +46,7 @@ cd frontend && npm install && npm run dev       # http://localhost:5173, proxies
 ### Tests
 
 ```bash
-dotnet test backend/Treningsparker.sln
+dotnet test --solution backend/Treningsparker.slnx
 cd frontend && npm run lint && npm run build
 ```
 

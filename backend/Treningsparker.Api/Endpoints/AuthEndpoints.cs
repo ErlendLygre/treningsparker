@@ -1,9 +1,7 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Treningsparker.Api.Data;
 using Treningsparker.Api.Security;
 
@@ -20,36 +18,30 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("/api/auth").RequireRateLimiting(RateLimiting.Auth);
 
-        group.MapPost("/register", async (RegisterRequest req, AppDbContext db, IConfiguration config) =>
+        group.MapPost("/register", async Task<Results<Ok<AuthResponse>, Conflict<MessageResponse>>> (
+            RegisterRequest req, AppDbContext db, TokenService tokens, CancellationToken ct) =>
         {
-            var email = req.Email?.Trim().ToLowerInvariant() ?? "";
-            var errors = new Dictionary<string, string[]>();
-            if (!email.Contains('@') || email.Length > 256) errors["email"] = ["Ugyldig e-postadresse."];
-            if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8 || req.Password.Length > 128)
-                errors["password"] = ["Passordet må være mellom 8 og 128 tegn."];
-            if (string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Trim().Length > 100)
-                errors["displayName"] = ["Navn er påkrevd (maks 100 tegn)."];
-            if (errors.Count > 0) return Results.ValidationProblem(errors);
-
-            if (await db.Users.AnyAsync(u => u.Email == email))
-                return Results.Conflict(new { message = "Det finnes allerede en bruker med denne e-postadressen." });
+            var email = req.Email.Trim().ToLowerInvariant();
+            if (await db.Users.AnyAsync(u => u.Email == email, ct))
+                return TypedResults.Conflict(new MessageResponse("Det finnes allerede en bruker med denne e-postadressen."));
 
             var user = new User { Email = email, DisplayName = req.DisplayName.Trim() };
             user.PasswordHash = Hasher.HashPassword(user, req.Password);
             db.Users.Add(user);
-            await db.SaveChangesAsync();
-            return Results.Ok(CreateResponse(user, config));
+            await db.SaveChangesAsync(ct);
+            return TypedResults.Ok(CreateResponse(user, tokens));
         });
 
-        group.MapPost("/login", async (LoginRequest req, AppDbContext db, IConfiguration config, LoginThrottle throttle) =>
+        group.MapPost("/login", async Task<Results<Ok<AuthResponse>, JsonHttpResult<MessageResponse>>> (
+            LoginRequest req, AppDbContext db, TokenService tokens, LoginThrottle throttle, CancellationToken ct) =>
         {
             var email = req.Email?.Trim().ToLowerInvariant() ?? "";
             var password = req.Password ?? "";
             if (throttle.IsLockedOut(email))
-                return Results.Json(new { message = "For mange mislykkede forsøk. Prøv igjen om en stund." },
+                return TypedResults.Json(new MessageResponse("For mange mislykkede forsøk. Prøv igjen om en stund."),
                     statusCode: StatusCodes.Status429TooManyRequests);
 
-            var user = email.Length <= 256 ? await db.Users.FirstOrDefaultAsync(u => u.Email == email) : null;
+            var user = email.Length <= 256 ? await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct) : null;
             var valid = false;
             if (password.Length <= 128)
             {
@@ -58,46 +50,25 @@ public static class AuthEndpoints
                 else
                     valid = Hasher.VerifyHashedPassword(user, user.PasswordHash, password) != PasswordVerificationResult.Failed;
             }
-            if (!valid)
+            if (!valid || user is null)
             {
                 throttle.RecordFailure(email);
-                return Results.Json(new { message = "Feil e-post eller passord." }, statusCode: StatusCodes.Status401Unauthorized);
+                return TypedResults.Json(new MessageResponse("Feil e-post eller passord."), statusCode: StatusCodes.Status401Unauthorized);
             }
 
             throttle.Reset(email);
-            return Results.Ok(CreateResponse(user!, config));
+            return TypedResults.Ok(CreateResponse(user, tokens));
         });
 
-        group.MapGet("/me", async (ClaimsPrincipal principal, AppDbContext db) =>
+        group.MapGet("/me", async Task<Results<Ok<UserDto>, UnauthorizedHttpResult>> (
+            ClaimsPrincipal principal, AppDbContext db, CancellationToken ct) =>
         {
-            var user = await db.Users.FindAsync(principal.GetUserId());
-            return user is null ? Results.Unauthorized() : Results.Ok(ToDto(user));
+            var user = principal.GetUserId() is int id ? await db.Users.FindAsync([id], ct) : null;
+            return user is null ? TypedResults.Unauthorized() : TypedResults.Ok(ToDto(user));
         }).RequireAuthorization();
     }
 
-    public static int GetUserId(this ClaimsPrincipal principal) =>
-        int.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
-
     private static UserDto ToDto(User u) => new(u.Id, u.Email, u.DisplayName, u.IsAdmin);
 
-    private static AuthResponse CreateResponse(User user, IConfiguration config)
-    {
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new("name", user.DisplayName),
-        };
-        if (user.IsAdmin) claims.Add(new Claim(ClaimTypes.Role, "Admin"));
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));
-        var token = new JwtSecurityToken(
-            issuer: config["Jwt:Issuer"],
-            audience: config["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(config.GetValue("Jwt:LifetimeHours", 12)),
-            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
-
-        return new AuthResponse(new JwtSecurityTokenHandler().WriteToken(token), ToDto(user));
-    }
+    private static AuthResponse CreateResponse(User user, TokenService tokens) => new(tokens.CreateToken(user), ToDto(user));
 }

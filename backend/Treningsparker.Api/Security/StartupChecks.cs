@@ -15,9 +15,16 @@ public static class StartupChecks
     /// </summary>
     public static void EnsureSecretsConfigured(IConfiguration config, IHostEnvironment env)
     {
-        if (env.IsDevelopment() || config.GetValue<bool>("AllowInsecureDefaults")) return;
+        // Without these, tokens are issued without issuer/audience and then rejected, so every login fails.
+        List<string> problems = [.. new[] { "Jwt:Issuer", "Jwt:Audience" }
+            .Where(key => string.IsNullOrWhiteSpace(config[key]))
+            .Select(key => $"{key.Replace(":", "__")} is missing")];
+        if (env.IsDevelopment() || config.GetValue<bool>("AllowInsecureDefaults"))
+        {
+            if (problems.Count > 0) throw new InvalidOperationException($"Refusing to start: {string.Join("; ", problems)}.");
+            return;
+        }
 
-        var problems = new List<string>();
         var jwtKey = config["Jwt:Key"];
         if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey == PublicJwtKey)
             problems.Add("Jwt__Key is missing or uses the public default");

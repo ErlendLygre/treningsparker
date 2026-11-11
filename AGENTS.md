@@ -8,10 +8,13 @@ before they appear on the public map. See README.md for the full user-facing doc
 - `frontend/` – React 18 + TypeScript + Vite, Leaflet/react-leaflet (OpenStreetMap tiles), React Router 7 (HashRouter).
   - `src/api/httpApi.ts` talks to the .NET API (same origin, `/api/...`).
   - `nginx.conf.template` – serves the built app and proxies `/api` to `API_UPSTREAM`.
-- `backend/Treningsparker.Api/` – ASP.NET Core 8 minimal API, EF Core, JWT auth.
+- `backend/Treningsparker.Api/` – ASP.NET Core 10 minimal API (.NET 10 LTS, pinned in `global.json`), EF Core 10, JWT auth.
+  Requests are validated by the built-in minimal API validation (attributes and `IValidatableObject` on the
+  request records in `Endpoints/Dtos.cs`); endpoints return `TypedResults` and pass `CancellationToken` to EF Core.
   - `Endpoints/` (routes, validation, DTOs), `Data/` (entities, DbContext, seeder), `Security/` (startup checks,
     rate limiting, login throttle).
-- `backend/Treningsparker.Api.Tests/` – xUnit integration tests via `WebApplicationFactory` (`ApiFactory`).
+- `backend/Treningsparker.Api.Tests/` – xUnit v3 integration tests via `WebApplicationFactory` (`ApiFactory`), run on
+  Microsoft Testing Platform (enabled in `global.json`). Pass `TestContext.Current.CancellationToken` to async calls.
 - `data/parks.seed.json` – 30 **mock** parks, loaded by the API seeder into an empty database.
 - Database: PostgreSQL in production (Scaleway Managed DB), SQLite for local dev and tests
   (`DatabaseProvider`). Schema is created with `EnsureCreated` (no migrations).
@@ -30,9 +33,9 @@ before they appear on the public map. See README.md for the full user-facing doc
 
 ```bash
 # Backend tests (SQLite) – must pass before committing backend changes
-dotnet test backend/Treningsparker.sln
+dotnet test --solution backend/Treningsparker.slnx
 # Same tests against PostgreSQL (CI runs both)
-TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres" dotnet test backend/Treningsparker.sln
+TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres" dotnet test --solution backend/Treningsparker.slnx
 
 # Frontend – lint and build must pass before committing frontend changes
 cd frontend && npm ci && npm run lint && npm run build
@@ -58,6 +61,9 @@ docker compose up --build
 - The seed parks are fictional; never present them as real data.
 
 ## Conventions
+
+- Start new dependencies, SDKs, base images and GitHub Actions on their current stable version (for .NET: the
+  current LTS). Check the registry instead of relying on memory, and upgrade majors deliberately in their own change.
 
 - New or changed API behaviour gets an integration test in `backend/Treningsparker.Api.Tests/`.
 - Validate input server-side (lengths, allowed values) and return `Results.ValidationProblem` (400), never a 500.

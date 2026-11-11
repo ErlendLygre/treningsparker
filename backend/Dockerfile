@@ -1,6 +1,7 @@
 # Build context: repository root (needs data/parks.seed.json)
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY global.json ./
 COPY data/ data/
 COPY backend/Treningsparker.Api/Treningsparker.Api.csproj backend/Treningsparker.Api/
 RUN dotnet restore backend/Treningsparker.Api/Treningsparker.Api.csproj -r linux-x64 -p:PublishReadyToRun=true
@@ -9,10 +10,10 @@ COPY backend/Treningsparker.Api/ backend/Treningsparker.Api/
 RUN dotnet publish backend/Treningsparker.Api/Treningsparker.Api.csproj -c Release -o /app --no-restore \
     -r linux-x64 --self-contained false -p:PublishReadyToRun=true
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# Chiseled: minimal Ubuntu without shell or package manager; runs as a non-root user and listens on 8080.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
 WORKDIR /app
 COPY --from=build /app .
-ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-USER app
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Treningsparker.Api.dll"]

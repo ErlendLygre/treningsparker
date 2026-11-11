@@ -36,7 +36,7 @@ public static class RateLimiting
 
             // Park suggestions per logged-in user, so one account can't flood the admin queue.
             options.AddPolicy(Submissions, context => RateLimitPartition.GetFixedWindowLimiter(
-                context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ClientKey(context),
+                context.User.FindFirstValue(AppClaims.UserId) ?? ClientKey(context),
                 _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = config.GetValue("RateLimiting:SubmissionsPerHour", 10),

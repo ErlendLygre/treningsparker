@@ -16,14 +16,14 @@ jobs:
         ports: ["5432:5432"]
         options: --health-cmd pg_isready --health-interval 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          global-json-file: global.json
       - name: Test (SQLite)
-        run: dotnet test backend/Treningsparker.sln
+        run: dotnet test --solution backend/Treningsparker.slnx
       - name: Test (PostgreSQL)
-        run: dotnet test backend/Treningsparker.sln
+        run: dotnet test --solution backend/Treningsparker.slnx
         env:
           TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
 
@@ -33,8 +33,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -46,5 +46,5 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker compose build

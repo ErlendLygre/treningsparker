@@ -1,8 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.Extensions.DependencyInjection;
 using Treningsparker.Api.Data;
 using Treningsparker.Api.Endpoints;
@@ -15,9 +15,9 @@ public class SecurityTests
     {
         var client = factory.CreateClient();
         var res = await client.PostAsJsonAsync("/api/auth/register",
-            new RegisterRequest($"user{Guid.NewGuid():N}@example.com", "Passord123", "Testbruker"));
+            new RegisterRequest($"user{Guid.NewGuid():N}@example.com", "Passord123", "Testbruker"), TestContext.Current.CancellationToken);
         res.EnsureSuccessStatusCode();
-        var auth = (await res.Content.ReadFromJsonAsync<AuthResponse>())!;
+        var auth = (await res.Content.ReadFromJsonAsync<AuthResponse>(TestContext.Current.CancellationToken))!;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
         return (client, auth);
     }
@@ -39,6 +39,17 @@ public class SecurityTests
         Assert.Contains("Refusing to start", ex.ToString());
     }
 
+    [Theory]
+    [InlineData("Jwt:Issuer")]
+    [InlineData("Jwt:Audience")]
+    public async Task Refuses_to_start_without_token_issuer_or_audience(string key)
+    {
+        await using var factory = new ApiFactory();
+        factory.Settings[key] = "";
+        var ex = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+        Assert.Contains("Refusing to start", ex.ToString());
+    }
+
     [Fact]
     public async Task Locks_out_an_account_after_repeated_wrong_passwords()
     {
@@ -48,12 +59,12 @@ public class SecurityTests
 
         for (var i = 0; i < 3; i++)
         {
-            var wrong = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(ApiFactory.AdminEmail, "wrong"));
+            var wrong = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(ApiFactory.AdminEmail, "wrong"), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
         }
 
         // Even the right password is refused while the account is locked.
-        var right = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(ApiFactory.AdminEmail, ApiFactory.AdminPassword));
+        var right = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(ApiFactory.AdminEmail, ApiFactory.AdminPassword), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.TooManyRequests, right.StatusCode);
     }
 
@@ -65,9 +76,9 @@ public class SecurityTests
         var client = factory.CreateClient();
         var login = new LoginRequest("nobody@example.com", "wrong-password");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", login)).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", login)).StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/auth/login", login)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", login, TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", login, TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/auth/login", login, TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -77,13 +88,13 @@ public class SecurityTests
         factory.Settings["RateLimiting:SubmissionsPerHour"] = "2";
         var (client, _) = await RegisterAsync(factory);
 
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/parks", Park("1"))).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/parks", Park("2"))).StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/parks", Park("3"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/parks", Park("1"), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/parks", Park("2"), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/parks", Park("3"), TestContext.Current.CancellationToken)).StatusCode);
 
         // Another user has their own allowance.
         var (other, _) = await RegisterAsync(factory);
-        Assert.Equal(HttpStatusCode.Created, (await other.PostAsJsonAsync("/api/parks", Park("4"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await other.PostAsJsonAsync("/api/parks", Park("4"), TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -91,7 +102,7 @@ public class SecurityTests
     {
         await using var factory = new ApiFactory();
         var (_, auth) = await RegisterAsync(factory);
-        var expires = new JwtSecurityTokenHandler().ReadJwtToken(auth.Token).ValidTo;
+        var expires = new JsonWebTokenHandler().ReadJsonWebToken(auth.Token).ValidTo;
         Assert.InRange(expires, DateTime.UtcNow.AddHours(11), DateTime.UtcNow.AddHours(12.1));
     }
 
@@ -105,19 +116,19 @@ public class SecurityTests
         {
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var user = await db.Users.SingleAsync(u => u.Id == auth.User.Id);
+            var user = await db.Users.SingleAsync(u => u.Id == auth.User.Id, TestContext.Current.CancellationToken);
             user.IsAdmin = isAdmin;
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await SetAdmin(true);
-        var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(auth.User.Email, "Passord123"));
-        var adminToken = (await login.Content.ReadFromJsonAsync<AuthResponse>())!.Token;
+        var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(auth.User.Email, "Passord123"), TestContext.Current.CancellationToken);
+        var adminToken = (await login.Content.ReadFromJsonAsync<AuthResponse>(TestContext.Current.CancellationToken))!.Token;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/admin/parks")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/admin/parks", TestContext.Current.CancellationToken)).StatusCode);
 
         await SetAdmin(false);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/parks")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/parks", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -128,9 +139,9 @@ public class SecurityTests
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await db.Users.Where(u => u.Id == auth.User.Id).ExecuteDeleteAsync();
+            await db.Users.Where(u => u.Id == auth.User.Id).ExecuteDeleteAsync(TestContext.Current.CancellationToken);
         }
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/parks/mine")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/parks/mine", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     public static TheoryData<CreateParkRequest> InvalidParks => new()
@@ -148,7 +159,21 @@ public class SecurityTests
     {
         await using var factory = new ApiFactory();
         var (client, _) = await RegisterAsync(factory);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/parks", park)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/parks", park, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Validation_errors_are_returned_in_norwegian()
+    {
+        await using var factory = new ApiFactory();
+        var (client, _) = await RegisterAsync(factory);
+        var res = await client.PostAsJsonAsync("/api/parks", Park() with { Latitude = 59.91, Longitude = 10.75 }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        Assert.Contains("Plasseringen må være i Stavanger/Sandnes-området.", await res.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        var register = await factory.CreateClient().PostAsJsonAsync("/api/auth/register", new RegisterRequest("ikke-en-epost", "Passord123", "Navn"), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, register.StatusCode);
+        Assert.Contains("Ugyldig e-postadresse.", await register.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -156,8 +181,8 @@ public class SecurityTests
     {
         await using var factory = new ApiFactory();
         var client = factory.CreateClient();
-        var tooLongName = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest("a@b.no", "Passord123", new string('a', 101)));
-        var tooLongPassword = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest("a@b.no", new string('a', 129), "Navn"));
+        var tooLongName = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest("a@b.no", "Passord123", new string('a', 101)), TestContext.Current.CancellationToken);
+        var tooLongPassword = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest("a@b.no", new string('a', 129), "Navn"), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, tooLongName.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, tooLongPassword.StatusCode);
     }
